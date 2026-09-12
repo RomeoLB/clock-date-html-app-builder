@@ -67,11 +67,19 @@
       <fieldset>
         <legend>Font</legend>
         <label>Font family <input type="text" name="fontFamily"></label>
+        <label>Custom font file
+          <input type="file" name="fontFile" id="fontFile" accept=".woff,.woff2,.ttf,.otf">
+        </label>
+        <button type="button" id="clearFontFile">Clear font file</button>
       </fieldset>
 
       <fieldset>
         <legend>Background</legend>
         <label><input type="checkbox" name="backgroundStretch"> Stretch to fill (crop)</label>
+        <label>Background image
+          <input type="file" name="backgroundFile" id="backgroundFile" accept="image/*">
+        </label>
+        <button type="button" id="clearBackgroundFile">Clear background image</button>
       </fieldset>
 
       <fieldset>

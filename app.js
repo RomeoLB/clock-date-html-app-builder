@@ -82,9 +82,54 @@ function refreshPreview() {
   });
 }
 
+function clearInertFilename(fileInputEl) {
+  const label = fileInputEl.parentElement.querySelector(".inert-filename");
+  if (label) {
+    label.remove();
+  }
+}
+
+function setFontFile(file) {
+  if (state.fontObjectUrl) {
+    URL.revokeObjectURL(state.fontObjectUrl);
+  }
+  state.fontFile = file;
+  state.fontObjectUrl = file ? URL.createObjectURL(file) : null;
+  clearInertFilename(document.getElementById("fontFile"));
+  refreshPreview();
+}
+
+function setBackgroundFile(file) {
+  if (state.backgroundObjectUrl) {
+    URL.revokeObjectURL(state.backgroundObjectUrl);
+  }
+  state.backgroundFile = file;
+  state.backgroundObjectUrl = file ? URL.createObjectURL(file) : null;
+  clearInertFilename(document.getElementById("backgroundFile"));
+  refreshPreview();
+}
+
+function initFileInputs() {
+  document.getElementById("fontFile").addEventListener("change", (e) => {
+    setFontFile(e.target.files[0] || null);
+  });
+  document.getElementById("clearFontFile").addEventListener("click", () => {
+    document.getElementById("fontFile").value = "";
+    setFontFile(null);
+  });
+  document.getElementById("backgroundFile").addEventListener("change", (e) => {
+    setBackgroundFile(e.target.files[0] || null);
+  });
+  document.getElementById("clearBackgroundFile").addEventListener("click", () => {
+    document.getElementById("backgroundFile").value = "";
+    setBackgroundFile(null);
+  });
+}
+
 function initForm() {
   const form = document.getElementById("configurator-form");
   applyConfigToForm(DEFAULT_CONFIG);
+  initFileInputs();
   form.addEventListener("input", () => {
     updateModeVisibility();
     refreshPreview();
