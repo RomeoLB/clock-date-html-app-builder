@@ -126,10 +126,64 @@ function initFileInputs() {
   });
 }
 
+function buildFinalConfig() {
+  const config = readFormConfig();
+  if (state.fontFile) {
+    config.fontUrl = assetFilename("font", state.fontFile.name);
+  }
+  if (state.backgroundFile) {
+    config.backgroundImageUrl = assetFilename("background", state.backgroundFile.name);
+  }
+  return config;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function generateAndDownload() {
+  const config = buildFinalConfig();
+  const html = buildClockHtml(config);
+  const runtimeSource = await fetch("clock-runtime.js").then((r) => r.text());
+
+  const files = {
+    "clock.html": fflate.strToU8(html),
+    "clock-runtime.js": fflate.strToU8(runtimeSource)
+  };
+
+  if (state.fontFile) {
+    files[config.fontUrl] = new Uint8Array(await state.fontFile.arrayBuffer());
+  }
+  if (state.backgroundFile) {
+    files[config.backgroundImageUrl] = new Uint8Array(await state.backgroundFile.arrayBuffer());
+  }
+
+  const zipped = fflate.zipSync(files);
+  const filename = normalizeZipFilename(document.getElementById("zipFilename").value);
+  downloadBlob(new Blob([zipped], { type: "application/zip" }), filename);
+}
+
+function initExport() {
+  document.getElementById("generateButton").addEventListener("click", () => {
+    clearError();
+    generateAndDownload().catch((err) => {
+      showError("Could not generate the zip: " + err.message);
+    });
+  });
+}
+
 function initForm() {
   const form = document.getElementById("configurator-form");
   applyConfigToForm(DEFAULT_CONFIG);
   initFileInputs();
+  initExport();
   form.addEventListener("input", () => {
     updateModeVisibility();
     refreshPreview();

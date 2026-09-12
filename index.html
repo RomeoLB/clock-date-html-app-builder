@@ -89,6 +89,12 @@
         <label>Width <input type="number" name="safeTextWidth" min="0" max="100"></label>
         <label>Height <input type="number" name="safeTextHeight" min="0" max="100"></label>
       </fieldset>
+
+      <fieldset>
+        <legend>Export</legend>
+        <label>Output zip filename <input type="text" name="zipFilename" id="zipFilename" placeholder="clock.zip"></label>
+        <button type="button" id="generateButton">Generate &amp; Download</button>
+      </fieldset>
     </form>
 
     <div id="preview-pane">
@@ -99,6 +105,7 @@
   <script src="clock-runtime.js"></script>
   <script src="config-codec.js"></script>
   <script src="packaging-helpers.js"></script>
+  <script src="vendor/fflate.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
