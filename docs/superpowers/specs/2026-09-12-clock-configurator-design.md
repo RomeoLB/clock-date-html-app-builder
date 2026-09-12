@@ -24,8 +24,8 @@ In scope:
 - Live preview that re-renders as the user changes settings
 - Uploading a custom font file and/or background image, bundled into the
   output
-- Generating a downloadable `.zip` containing `clock.html`, the shared
-  runtime script, and any uploaded assets
+- Generating a downloadable `.zip`, named by the user, containing
+  `clock.html`, the shared runtime script, and any uploaded assets
 - Re-importing a previously generated `.zip` or standalone `.html` file to
   resume editing
 - A git repo for this project, ready to push to GitHub and serve via GitHub
@@ -46,8 +46,8 @@ Three static files (plus the vendored library), all served together:
 
 - **`index.html`** — the configurator page. A form grouped into sections
   (Mode & Time/Date, Colors, Font, Background, Layout / Safe Text Region),
-  a live preview pane, an "Import existing config" file input, and a
-  "Generate & Download" button.
+  an output zip filename field, a live preview pane, an "Import existing
+  config" file input, and a "Generate & Download" button.
 - **`clock-runtime.js`** — the rendering logic extracted verbatim from the
   current `clock.html`'s inline `<script>` (`buildIntlOptions`,
   `reorderDateParts`, `formatClockString`, `applyRotation`,
@@ -91,7 +91,12 @@ unchanged from the current schema.
    `font.woff2`, `background.jpg`); `fontUrl`/`backgroundImageUrl` in the
    generated config point to those filenames.
 3. `fflate.zipSync` packages `clock.html` + `clock-runtime.js` + any asset
-   files into a single `.zip`, downloaded via a Blob/anchor.
+   files into a single `.zip`, downloaded via a Blob/anchor using the
+   filename from the output filename field (defaulting to e.g. `clock.zip`
+   if left blank; a `.zip` extension is appended if the user didn't include
+   one). The contained `clock.html` itself is always named `clock.html`
+   regardless of the zip's name, since that's the filename BrightSign
+   expects inside the package.
 
 **Import (either a previously generated `.zip` or a standalone `.html`):**
 1. File input accepts `.zip` or `.html`.
