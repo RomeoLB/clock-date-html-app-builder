@@ -202,6 +202,22 @@ function restoreAssetFromImport(filename, zipEntries, setter, fileInputEl) {
   }
 }
 
+function isValidImportedConfig(config) {
+  if (!config || typeof config !== "object") {
+    return false;
+  }
+  const region = config.safeTextRegion;
+  if (!region || typeof region !== "object") {
+    return false;
+  }
+  return (
+    typeof region.x === "number" &&
+    typeof region.y === "number" &&
+    typeof region.width === "number" &&
+    typeof region.height === "number"
+  );
+}
+
 async function handleImportFile(file) {
   clearError();
   try {
@@ -220,6 +236,10 @@ async function handleImportFile(file) {
     }
 
     const config = extractConfigFromHtml(htmlText);
+
+    if (!isValidImportedConfig(config)) {
+      throw new Error("The imported file's config is missing required fields (e.g. safeTextRegion).");
+    }
 
     setFontFile(null);
     document.getElementById("fontFile").value = "";
