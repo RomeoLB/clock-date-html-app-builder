@@ -75,11 +75,16 @@ function refreshPreview() {
   if (!previewFrame.contentWindow || !previewFrame.contentWindow.updatePreview) {
     return;
   }
-  const config = readFormConfig();
-  previewFrame.contentWindow.updatePreview(config, {
-    fontUrl: state.fontObjectUrl,
-    backgroundImageUrl: state.backgroundObjectUrl
-  });
+  try {
+    const config = readFormConfig();
+    previewFrame.contentWindow.updatePreview(config, {
+      fontUrl: state.fontObjectUrl,
+      backgroundImageUrl: state.backgroundObjectUrl
+    });
+    clearError();
+  } catch (err) {
+    showError("Could not render the preview: " + err.message);
+  }
 }
 
 function clearInertFilename(fileInputEl) {
@@ -151,7 +156,11 @@ function downloadBlob(blob, filename) {
 async function generateAndDownload() {
   const config = buildFinalConfig();
   const html = buildClockHtml(config);
-  const runtimeSource = await fetch("clock-runtime.js").then((r) => r.text());
+  const runtimeResponse = await fetch("clock-runtime.js");
+  if (!runtimeResponse.ok) {
+    throw new Error("Could not load clock-runtime.js (" + runtimeResponse.status + ")");
+  }
+  const runtimeSource = await runtimeResponse.text();
 
   const files = {
     "clock.html": fflate.strToU8(html),
@@ -187,7 +196,7 @@ function showInertFilename(fileInputEl, filename) {
   clearInertFilename(fileInputEl);
   const label = document.createElement("span");
   label.className = "inert-filename";
-  label.textContent = " (previously: " + filename + ", re-upload to change)";
+  label.textContent = " (previously: " + filename + " — re-upload it to keep it in the export)";
   fileInputEl.parentElement.appendChild(label);
 }
 
@@ -246,7 +255,7 @@ async function handleImportFile(file) {
     setBackgroundFile(null);
     document.getElementById("backgroundFile").value = "";
 
-    applyConfigToForm(config);
+    applyConfigToForm({ ...DEFAULT_CONFIG, ...config });
 
     restoreAssetFromImport(config.fontUrl, zipEntries, setFontFile, document.getElementById("fontFile"));
     restoreAssetFromImport(config.backgroundImageUrl, zipEntries, setBackgroundFile, document.getElementById("backgroundFile"));

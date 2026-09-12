@@ -36,7 +36,7 @@ const SCHEMA_DOC_COMMENT = [
 const CLOCK_CONFIG_MARKER = "const clockConfig = ";
 
 function configToJSONText(config) {
-  return JSON.stringify(config, null, 2);
+  return JSON.stringify(config, null, 2).replace(/</g, "\\u003C");
 }
 
 function buildClockHtml(config) {
