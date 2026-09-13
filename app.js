@@ -273,12 +273,47 @@ function initImport() {
   });
 }
 
+const FIT_HEIGHT_MARGIN = 1.3;
+
+function fitHeightToText() {
+  const form = document.getElementById("configurator-form");
+  const previewFrame = document.getElementById("preview-frame");
+  const previewDoc = previewFrame.contentWindow.document;
+  const container = previewDoc.getElementById("clock-container");
+  const textEl = previewDoc.getElementById("clock-text");
+
+  // Measure in the unrotated frame, since safeTextRegion's y/height percentages
+  // are defined pre-transform even though rotation changes the visual box.
+  const previousTransform = container.style.transform;
+  container.style.transform = "none";
+  const viewportHeightPx = previewDoc.documentElement.clientHeight;
+  const textHeightPx = textEl.getBoundingClientRect().height;
+  container.style.transform = previousTransform;
+
+  const fitted = computeFitHeightRegion(
+    Number(form.safeTextY.value),
+    Number(form.safeTextHeight.value),
+    textHeightPx,
+    viewportHeightPx,
+    FIT_HEIGHT_MARGIN
+  );
+
+  form.safeTextY.value = String(Math.round(fitted.y * 10) / 10);
+  form.safeTextHeight.value = String(Math.round(fitted.height * 10) / 10);
+  refreshPreview();
+}
+
+function initFitHeightButton() {
+  document.getElementById("fitHeightButton").addEventListener("click", fitHeightToText);
+}
+
 function initForm() {
   const form = document.getElementById("configurator-form");
   applyConfigToForm(DEFAULT_CONFIG);
   initFileInputs();
   initExport();
   initImport();
+  initFitHeightButton();
   form.addEventListener("input", () => {
     updateModeVisibility();
     refreshPreview();

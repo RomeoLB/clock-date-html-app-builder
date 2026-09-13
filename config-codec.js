@@ -136,12 +136,29 @@ function extractConfigFromHtml(htmlText) {
   }
 }
 
+// Given the current safeTextRegion y/height (%) and the text's actual rendered
+// height in px (measured against a viewport of viewportHeightPx), returns a new
+// {y, height} (%) that shrinks the region to snugly wrap the text (plus
+// marginFactor of breathing room) while keeping the region's own vertical
+// center fixed, so shrinking the box doesn't shift where the text appears.
+function computeFitHeightRegion(currentY, currentHeight, textHeightPx, viewportHeightPx, marginFactor) {
+  if (viewportHeightPx <= 0 || textHeightPx <= 0) {
+    return { y: currentY, height: currentHeight };
+  }
+  const desiredHeight = (textHeightPx * marginFactor / viewportHeightPx) * 100;
+  const clampedHeight = Math.max(1, Math.min(100, desiredHeight));
+  const centerY = currentY + currentHeight / 2;
+  const newY = Math.max(0, Math.min(100 - clampedHeight, centerY - clampedHeight / 2));
+  return { y: newY, height: clampedHeight };
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     DEFAULT_CONFIG,
     SCHEMA_DOC_COMMENT,
     configToJSONText,
     buildClockHtml,
-    extractConfigFromHtml
+    extractConfigFromHtml,
+    computeFitHeightRegion
   };
 }
