@@ -25,7 +25,7 @@ function readFormConfig() {
     rotation: Number(form.rotation.value),
     language: selectedLanguage || "en",
     foregroundColor: form.foregroundColor.value,
-    backgroundColor: form.backgroundColor.value,
+    backgroundColor: form.backgroundTransparent.checked ? "transparent" : form.backgroundColor.value,
     fontFamily: form.fontFamily.value.trim() || "sans-serif",
     fontUrl: null,
     backgroundImageUrl: null,
@@ -49,7 +49,12 @@ function applyConfigToForm(config) {
   form.rotation.value = String(config.rotation);
   setLanguageField(config.language);
   form.foregroundColor.value = config.foregroundColor;
-  form.backgroundColor.value = config.backgroundColor;
+  const isTransparentBackground = config.backgroundColor.trim().toLowerCase() === "transparent";
+  form.backgroundTransparent.checked = isTransparentBackground;
+  if (!isTransparentBackground) {
+    form.backgroundColor.value = config.backgroundColor;
+  }
+  updateBackgroundTransparencyVisibility();
   form.fontFamily.value = config.fontFamily;
   form.backgroundStretch.checked = config.backgroundStretch;
   form.safeTextX.value = String(config.safeTextRegion.x);
@@ -87,6 +92,11 @@ function setLanguageField(language) {
     form.languageCustom.value = language;
   }
   updateLanguageVisibility();
+}
+
+function updateBackgroundTransparencyVisibility() {
+  const form = document.getElementById("configurator-form");
+  form.backgroundColor.disabled = form.backgroundTransparent.checked;
 }
 
 function updateLanguageVisibility() {
@@ -369,11 +379,13 @@ function initForm() {
   form.addEventListener("input", () => {
     updateModeVisibility();
     updateLanguageVisibility();
+    updateBackgroundTransparencyVisibility();
     refreshPreview();
   });
   form.addEventListener("change", () => {
     updateModeVisibility();
     updateLanguageVisibility();
+    updateBackgroundTransparencyVisibility();
     refreshPreview();
   });
   document.getElementById("preview-frame").addEventListener("load", refreshPreview);
