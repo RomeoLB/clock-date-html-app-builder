@@ -161,6 +161,14 @@ function setFontFile(file) {
     } else {
       console.log("[clock-font] leaving Font Family field as-is (already a custom, non-generic name)");
     }
+  } else {
+    // No file means no @font-face is bound to whatever name is in the field,
+    // so an auto-derived/custom name left over from a previous upload is
+    // stale and would just resolve to some arbitrary system font. Reset to
+    // the default so the field matches what will actually render.
+    const form = document.getElementById("configurator-form");
+    console.log("[clock-font] clearing font file - resetting Font Family field to default:", DEFAULT_CONFIG.fontFamily);
+    form.fontFamily.value = DEFAULT_CONFIG.fontFamily;
   }
 
   refreshPreview();
