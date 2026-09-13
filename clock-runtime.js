@@ -74,7 +74,7 @@ function applyColors(config, body, textEl) {
   textEl.style.color = config.foregroundColor;
 }
 
-function applyFont(config, textEl, doc, fontUrl, onFontError) {
+function applyFont(config, textEl, doc, fontUrl, onFontError, onFontLoaded) {
   const url = fontUrl !== undefined ? fontUrl : config.fontUrl;
 
   // Every call (i.e. every preview refresh) would otherwise add another
@@ -109,6 +109,8 @@ function applyFont(config, textEl, doc, fontUrl, onFontError) {
         if (matches.length === 0 && onFontError) {
           console.warn("[clock-font] load resolved with zero matches - treating as a failed load for", config.fontFamily);
           onFontError(new Error('The font "' + config.fontFamily + '" could not be loaded. The file may be corrupted or in an unsupported format.'));
+        } else if (matches.length > 0 && onFontLoaded) {
+          onFontLoaded();
         }
       }).catch(function (err) {
         console.error("[clock-font] doc.fonts.load rejected for", config.fontFamily, "-", err && err.name, err && err.message, err);
@@ -175,13 +177,25 @@ function bootClock(config, overrides) {
   applyBackgroundImage(config, document.body, overrides.backgroundImageUrl);
   applySafeTextRegion(config, container);
   applyColors(config, document.body, textEl);
-  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError);
-  function tick() {
-    render(config, textEl);
+
+  // Sized once (below), not on every tick: with tabular-nums digit widths are
+  // stable, so continuously re-fitting every second only produced visible
+  // jitter as the exact rendered string varied (e.g. AM/PM, weekday length)
+  // with no benefit. Re-fit once more if the custom font finishes loading
+  // after this point, since its real metrics may differ from the fallback
+  // used for the very first measurement.
+  function refit() {
     fitTextToContainer(container, textEl, config.textScale);
   }
-  tick();
-  return setInterval(tick, 1000);
+
+  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
+
+  render(config, textEl);
+  refit();
+
+  return setInterval(function () {
+    render(config, textEl);
+  }, 1000);
 }
 
 if (typeof module !== "undefined" && module.exports) {

@@ -219,6 +219,52 @@ test("applyFont: does not call onFontError when doc.fonts.load resolves with a m
   assert.equal(called, false);
 });
 
+test("applyFont: calls onFontLoaded when doc.fonts.load resolves with a match", async () => {
+  const textEl = { style: {} };
+  const doc = {
+    createElement: () => ({ textContent: "" }),
+    head: { appendChild: () => {} },
+    fonts: { load: () => Promise.resolve([{}]) }
+  };
+  let loadedCalled = false;
+  let errorCalled = false;
+
+  applyFont(
+    { fontFamily: "GoodFont", fontUrl: "good.ttf" },
+    textEl,
+    doc,
+    undefined,
+    () => { errorCalled = true; },
+    () => { loadedCalled = true; }
+  );
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loadedCalled, true);
+  assert.equal(errorCalled, false);
+});
+
+test("applyFont: does not call onFontLoaded when doc.fonts.load resolves with no matches", async () => {
+  const textEl = { style: {} };
+  const doc = {
+    createElement: () => ({ textContent: "" }),
+    head: { appendChild: () => {} },
+    fonts: { load: () => Promise.resolve([]) }
+  };
+  let loadedCalled = false;
+
+  applyFont(
+    { fontFamily: "BrokenFont", fontUrl: "broken.ttf" },
+    textEl,
+    doc,
+    undefined,
+    () => {},
+    () => { loadedCalled = true; }
+  );
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loadedCalled, false);
+});
+
 test("applyFont: replaces a previously injected @font-face block instead of accumulating", () => {
   const textEl = { style: {} };
   const headChildren = [];
