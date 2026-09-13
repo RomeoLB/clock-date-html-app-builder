@@ -129,6 +129,57 @@ function render(config, textEl, now) {
   textEl.textContent = formatClockString(config, now);
 }
 
+// Renders str into textEl. When digitCellWidth is falsy, this is a plain
+// text assignment. Otherwise, each "0"-"9" character is wrapped in its own
+// fixed-width, centered span (other characters render as plain text) - so
+// the string's total rendered width stays constant regardless of which
+// digits are showing. Needed because not every font implements tabular
+// (monospaced) numerals; for those, the natural glyph widths of "1" and "8"
+// can differ substantially, which otherwise visibly shifts the
+// (center-aligned) text side to side as the seconds tick.
+function renderText(textEl, doc, str, digitCellWidth) {
+  if (!digitCellWidth) {
+    textEl.textContent = str;
+    return;
+  }
+  while (textEl.firstChild) {
+    textEl.removeChild(textEl.firstChild);
+  }
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch >= "0" && ch <= "9") {
+      const span = doc.createElement("span");
+      span.textContent = ch;
+      span.style.display = "inline-block";
+      span.style.width = digitCellWidth + "px";
+      span.style.textAlign = "center";
+      textEl.appendChild(span);
+    } else {
+      textEl.appendChild(doc.createTextNode(ch));
+    }
+  }
+}
+
+// Measures the widest "0"-"9" glyph in textEl's current font-family/font-size
+// using a detached, invisible probe element - the value renderText needs to
+// give every digit a stable cell width.
+function measureMaxDigitWidth(doc, textEl) {
+  const probe = doc.createElement("span");
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.whiteSpace = "nowrap";
+  probe.style.fontFamily = textEl.style.fontFamily;
+  probe.style.fontSize = textEl.style.fontSize;
+  doc.body.appendChild(probe);
+  let maxWidth = 0;
+  for (let d = 0; d <= 9; d++) {
+    probe.textContent = String(d);
+    maxWidth = Math.max(maxWidth, probe.getBoundingClientRect().width);
+  }
+  doc.body.removeChild(probe);
+  return maxWidth;
+}
+
 // Returns the font size (in the same unit as baseFontSize) that makes a box of
 // textWidth x textHeight (as measured at baseFontSize) the largest it can be
 // while still fitting within containerWidth x containerHeight, times fillRatio.
@@ -178,24 +229,32 @@ function bootClock(config, overrides) {
   applySafeTextRegion(config, container);
   applyColors(config, document.body, textEl);
 
-  // Sized once (below), not on every tick: with tabular-nums digit widths are
-  // stable, so continuously re-fitting every second only produced visible
-  // jitter as the exact rendered string varied (e.g. AM/PM, weekday length)
-  // with no benefit. Re-fit once more if the custom font finishes loading
-  // after this point, since its real metrics may differ from the fallback
-  // used for the very first measurement.
+  // Sized once (below), not on every tick: continuously re-fitting every
+  // second only produced visible jitter as the exact rendered string varied
+  // (e.g. AM/PM, weekday length) with no benefit. Re-fit once more if the
+  // custom font finishes loading after this point, since its real metrics
+  // may differ from the fallback used for the very first measurement.
+  let digitCellWidth = null;
+
+  function tick() {
+    renderText(textEl, document, formatClockString(config), digitCellWidth);
+  }
+
   function refit() {
     fitTextToContainer(container, textEl, config.textScale);
+    // Not every font implements tabular (monospaced) numerals, so pin every
+    // digit to the widest one's own width - otherwise the centered text
+    // visibly shifts side to side as narrower/wider digits cycle in.
+    digitCellWidth = measureMaxDigitWidth(document, textEl);
+    tick();
   }
 
   applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
 
-  render(config, textEl);
+  tick();
   refit();
 
-  return setInterval(function () {
-    render(config, textEl);
-  }, 1000);
+  return setInterval(tick, 1000);
 }
 
 if (typeof module !== "undefined" && module.exports) {
@@ -209,6 +268,8 @@ if (typeof module !== "undefined" && module.exports) {
     applyColors,
     applyFont,
     render,
+    renderText,
+    measureMaxDigitWidth,
     computeFitFontSize,
     resolveTextScale,
     fitTextToContainer,

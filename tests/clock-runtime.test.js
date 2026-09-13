@@ -10,9 +10,39 @@ const {
   applyColors,
   applyFont,
   render,
+  renderText,
   computeFitFontSize,
   resolveTextScale
 } = require("../clock-runtime.js");
+
+function makeFakeTextEl() {
+  const nodes = [];
+  return {
+    textContent: "",
+    get firstChild() {
+      return nodes.length ? nodes[0] : null;
+    },
+    get childNodes() {
+      return nodes.slice();
+    },
+    appendChild(node) {
+      nodes.push(node);
+    },
+    removeChild(node) {
+      const index = nodes.indexOf(node);
+      if (index !== -1) {
+        nodes.splice(index, 1);
+      }
+    }
+  };
+}
+
+function makeFakeDoc() {
+  return {
+    createElement: (tag) => ({ tagName: tag, style: {}, textContent: "" }),
+    createTextNode: (text) => ({ nodeType: 3, textContent: text })
+  };
+}
 
 const FIXED_DATE = new Date(2026, 8, 12, 14, 6, 53); // Saturday, September 12, 2026, 14:06:53
 
@@ -314,6 +344,63 @@ test("render writes the formatted string into the text element", () => {
   const textEl = { style: {} };
   render({ mode: "time", language: "en", hour12: false, showSeconds: false }, textEl, FIXED_DATE);
   assert.equal(textEl.textContent, "14:06");
+});
+
+test("renderText: with no digitCellWidth, falls back to a plain textContent assignment", () => {
+  const textEl = makeFakeTextEl();
+  const doc = makeFakeDoc();
+  renderText(textEl, doc, "14:06", null);
+  assert.equal(textEl.textContent, "14:06");
+  assert.equal(textEl.childNodes.length, 0);
+});
+
+test("renderText: with a digitCellWidth, wraps each digit in its own fixed-width centered span", () => {
+  const textEl = makeFakeTextEl();
+  const doc = makeFakeDoc();
+  renderText(textEl, doc, "1:2", 20);
+
+  const nodes = textEl.childNodes;
+  assert.equal(nodes.length, 3);
+
+  assert.equal(nodes[0].tagName, "span");
+  assert.equal(nodes[0].textContent, "1");
+  assert.equal(nodes[0].style.width, "20px");
+  assert.equal(nodes[0].style.display, "inline-block");
+  assert.equal(nodes[0].style.textAlign, "center");
+
+  assert.equal(nodes[1].nodeType, 3);
+  assert.equal(nodes[1].textContent, ":");
+
+  assert.equal(nodes[2].tagName, "span");
+  assert.equal(nodes[2].textContent, "2");
+  assert.equal(nodes[2].style.width, "20px");
+});
+
+test("renderText: leaves non-digit characters (letters, spaces) as plain text even with a digitCellWidth", () => {
+  const textEl = makeFakeTextEl();
+  const doc = makeFakeDoc();
+  renderText(textEl, doc, "9 AM", 20);
+
+  const nodes = textEl.childNodes;
+  assert.equal(nodes.length, 4);
+  assert.equal(nodes[0].tagName, "span");
+  assert.equal(nodes[0].textContent, "9");
+  assert.equal(nodes[1].nodeType, 3);
+  assert.equal(nodes[1].textContent, " ");
+  assert.equal(nodes[2].nodeType, 3);
+  assert.equal(nodes[2].textContent, "A");
+  assert.equal(nodes[3].nodeType, 3);
+  assert.equal(nodes[3].textContent, "M");
+});
+
+test("renderText: clears previous children instead of accumulating on repeated calls", () => {
+  const textEl = makeFakeTextEl();
+  const doc = makeFakeDoc();
+  renderText(textEl, doc, "11:11:11", 20);
+  assert.equal(textEl.childNodes.length, 8);
+  renderText(textEl, doc, "22:22:22", 20);
+  assert.equal(textEl.childNodes.length, 8);
+  assert.equal(textEl.childNodes[0].textContent, "2");
 });
 
 test("computeFitFontSize: scales up to fill a container wider and taller than the text", () => {
