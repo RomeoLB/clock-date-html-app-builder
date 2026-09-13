@@ -103,15 +103,21 @@ function applyFont(config, textEl, doc, fontUrl, onFontError) {
     // (corrupt file, unsupported format, etc.). doc.fonts.load actively
     // attempts the load and tells us whether it actually succeeded.
     if (doc.fonts && typeof doc.fonts.load === "function") {
+      console.log("[clock-font] loading", config.fontFamily, "from", url);
       doc.fonts.load('1em "' + config.fontFamily + '"').then(function (matches) {
+        console.log("[clock-font] doc.fonts.load resolved for", config.fontFamily, "with", matches.length, "matching face(s)", matches);
         if (matches.length === 0 && onFontError) {
+          console.warn("[clock-font] load resolved with zero matches - treating as a failed load for", config.fontFamily);
           onFontError(new Error('The font "' + config.fontFamily + '" could not be loaded. The file may be corrupted or in an unsupported format.'));
         }
       }).catch(function (err) {
+        console.error("[clock-font] doc.fonts.load rejected for", config.fontFamily, "-", err && err.name, err && err.message, err);
         if (onFontError) {
           onFontError(err);
         }
       });
+    } else {
+      console.log("[clock-font] doc.fonts.load is not available in this environment - skipping load-failure detection for", config.fontFamily);
     }
   }
   textEl.style.fontFamily = config.fontFamily;

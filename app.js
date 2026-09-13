@@ -77,10 +77,14 @@ function refreshPreview() {
   }
   try {
     const config = readFormConfig();
+    console.log("[clock-font] refreshPreview: fontFamily=", JSON.stringify(config.fontFamily), "fontUrl override=", state.fontObjectUrl);
     previewFrame.contentWindow.updatePreview(config, {
       fontUrl: state.fontObjectUrl,
       backgroundImageUrl: state.backgroundObjectUrl,
-      onFontError: (err) => showError(err.message)
+      onFontError: (err) => {
+        console.error("[clock-font] onFontError fired:", err && err.name, err && err.message, err);
+        showError(err.message);
+      }
     });
     clearError();
   } catch (err) {
@@ -96,11 +100,15 @@ function clearInertFilename(fileInputEl) {
 }
 
 function setFontFile(file) {
+  console.log("[clock-font] setFontFile called with", file ? { name: file.name, size: file.size, type: file.type } : null);
+
   if (state.fontObjectUrl) {
+    console.log("[clock-font] revoking previous object URL", state.fontObjectUrl);
     URL.revokeObjectURL(state.fontObjectUrl);
   }
   state.fontFile = file;
   state.fontObjectUrl = file ? URL.createObjectURL(file) : null;
+  console.log("[clock-font] new object URL:", state.fontObjectUrl);
   clearInertFilename(document.getElementById("fontFile"));
 
   // @font-face silently no-ops when bound to a generic name like the default
@@ -110,8 +118,14 @@ function setFontFile(file) {
   if (file) {
     const form = document.getElementById("configurator-form");
     const currentName = form.fontFamily.value;
-    if (currentName.trim() === "" || isGenericFontFamilyName(currentName)) {
-      form.fontFamily.value = deriveFontFamilyName(file.name);
+    const currentNameIsGeneric = currentName.trim() === "" || isGenericFontFamilyName(currentName);
+    console.log("[clock-font] current Font Family field value:", JSON.stringify(currentName), "- generic/empty:", currentNameIsGeneric);
+    if (currentNameIsGeneric) {
+      const derived = deriveFontFamilyName(file.name);
+      console.log("[clock-font] auto-filling Font Family field with derived name:", derived);
+      form.fontFamily.value = derived;
+    } else {
+      console.log("[clock-font] leaving Font Family field as-is (already a custom, non-generic name)");
     }
   }
 
