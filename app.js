@@ -79,7 +79,8 @@ function refreshPreview() {
     const config = readFormConfig();
     previewFrame.contentWindow.updatePreview(config, {
       fontUrl: state.fontObjectUrl,
-      backgroundImageUrl: state.backgroundObjectUrl
+      backgroundImageUrl: state.backgroundObjectUrl,
+      onFontError: (err) => showError(err.message)
     });
     clearError();
   } catch (err) {

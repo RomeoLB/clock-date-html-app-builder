@@ -165,6 +165,104 @@ test("applyFont: sets font-family, and injects an @font-face rule only when a ur
   assert.match(appended[0].textContent, /src: url\("f\.woff2"\)/);
 });
 
+test("applyFont: reports onFontError when doc.fonts.load resolves with no matches (load failed)", async () => {
+  const textEl = { style: {} };
+  const doc = {
+    createElement: () => ({ textContent: "" }),
+    head: { appendChild: () => {} },
+    fonts: { load: () => Promise.resolve([]) }
+  };
+  let reportedError = null;
+
+  applyFont({ fontFamily: "BrokenFont", fontUrl: "broken.ttf" }, textEl, doc, undefined, (err) => {
+    reportedError = err;
+  });
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(reportedError instanceof Error);
+  assert.match(reportedError.message, /BrokenFont/);
+});
+
+test("applyFont: reports onFontError when doc.fonts.load rejects", async () => {
+  const textEl = { style: {} };
+  const doc = {
+    createElement: () => ({ textContent: "" }),
+    head: { appendChild: () => {} },
+    fonts: { load: () => Promise.reject(new Error("network error")) }
+  };
+  let reportedError = null;
+
+  applyFont({ fontFamily: "MyFont", fontUrl: "f.woff2" }, textEl, doc, undefined, (err) => {
+    reportedError = err;
+  });
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(reportedError instanceof Error);
+  assert.equal(reportedError.message, "network error");
+});
+
+test("applyFont: does not call onFontError when doc.fonts.load resolves with a match", async () => {
+  const textEl = { style: {} };
+  const doc = {
+    createElement: () => ({ textContent: "" }),
+    head: { appendChild: () => {} },
+    fonts: { load: () => Promise.resolve([{}]) }
+  };
+  let called = false;
+
+  applyFont({ fontFamily: "GoodFont", fontUrl: "good.ttf" }, textEl, doc, undefined, () => {
+    called = true;
+  });
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(called, false);
+});
+
+test("applyFont: replaces a previously injected @font-face block instead of accumulating", () => {
+  const textEl = { style: {} };
+  const headChildren = [];
+  const head = {
+    appendChild(el) {
+      headChildren.push(el);
+    },
+    querySelector(selector) {
+      assert.equal(selector, "[data-clock-font-face]");
+      return headChildren.find((el) => el.getAttribute("data-clock-font-face") === "true") || null;
+    },
+    removeChild(el) {
+      const index = headChildren.indexOf(el);
+      if (index !== -1) {
+        headChildren.splice(index, 1);
+      }
+    }
+  };
+  const doc = {
+    createElement: () => {
+      const attributes = {};
+      return {
+        textContent: "",
+        setAttribute(name, value) {
+          attributes[name] = value;
+        },
+        getAttribute(name) {
+          return attributes[name];
+        }
+      };
+    },
+    head
+  };
+
+  applyFont({ fontFamily: "FontA", fontUrl: "a.woff2" }, textEl, doc);
+  assert.equal(headChildren.length, 1);
+
+  applyFont({ fontFamily: "FontB", fontUrl: "b.woff2" }, textEl, doc);
+  assert.equal(headChildren.length, 1);
+  assert.match(headChildren[0].textContent, /FontB/);
+
+  applyFont({ fontFamily: "FontB", fontUrl: null }, textEl, doc);
+  assert.equal(headChildren.length, 0);
+});
+
 test("render writes the formatted string into the text element", () => {
   const textEl = { style: {} };
   render({ mode: "time", language: "en", hour12: false, showSeconds: false }, textEl, FIXED_DATE);

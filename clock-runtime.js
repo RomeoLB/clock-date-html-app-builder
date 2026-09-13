@@ -74,12 +74,45 @@ function applyColors(config, body, textEl) {
   textEl.style.color = config.foregroundColor;
 }
 
-function applyFont(config, textEl, doc, fontUrl) {
+function applyFont(config, textEl, doc, fontUrl, onFontError) {
   const url = fontUrl !== undefined ? fontUrl : config.fontUrl;
+
+  // Every call (i.e. every preview refresh) would otherwise add another
+  // @font-face block on top of the last, piling up stale rules - some
+  // pointing at blob: URLs already revoked by a since-cleared/replaced
+  // upload. document.fonts.load for a family fails if ANY same-family rule
+  // can't load, so a stale rule can falsely report a perfectly good new
+  // font as broken. Only ever keep the current one.
+  if (doc.head.querySelector) {
+    const existingFontFaceEl = doc.head.querySelector("[data-clock-font-face]");
+    if (existingFontFaceEl) {
+      doc.head.removeChild(existingFontFaceEl);
+    }
+  }
+
   if (url) {
     const styleEl = doc.createElement("style");
+    if (styleEl.setAttribute) {
+      styleEl.setAttribute("data-clock-font-face", "true");
+    }
     styleEl.textContent = '@font-face { font-family: "' + config.fontFamily + '"; src: url("' + url + '"); }';
     doc.head.appendChild(styleEl);
+
+    // The @font-face rule above loads lazily and silently on its own - the
+    // browser just falls back to a default font with no signal if it fails
+    // (corrupt file, unsupported format, etc.). doc.fonts.load actively
+    // attempts the load and tells us whether it actually succeeded.
+    if (doc.fonts && typeof doc.fonts.load === "function") {
+      doc.fonts.load('1em "' + config.fontFamily + '"').then(function (matches) {
+        if (matches.length === 0 && onFontError) {
+          onFontError(new Error('The font "' + config.fontFamily + '" could not be loaded. The file may be corrupted or in an unsupported format.'));
+        }
+      }).catch(function (err) {
+        if (onFontError) {
+          onFontError(err);
+        }
+      });
+    }
   }
   textEl.style.fontFamily = config.fontFamily;
 }
@@ -125,7 +158,7 @@ function bootClock(config, overrides) {
   applyBackgroundImage(config, document.body, overrides.backgroundImageUrl);
   applySafeTextRegion(config, container);
   applyColors(config, document.body, textEl);
-  applyFont(config, textEl, document, overrides.fontUrl);
+  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError);
   function tick() {
     render(config, textEl);
     fitTextToContainer(container, textEl);
