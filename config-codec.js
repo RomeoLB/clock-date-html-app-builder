@@ -66,6 +66,7 @@ function buildClockHtml(config) {
     "    font-size: 10vw;\n" +
     "    color: #ffffff;\n" +
     "    white-space: nowrap;\n" +
+    "    font-variant-numeric: tabular-nums;\n" +
     "  }\n" +
     "</style>\n" +
     "</head>\n" +

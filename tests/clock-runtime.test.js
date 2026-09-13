@@ -9,7 +9,8 @@ const {
   applySafeTextRegion,
   applyColors,
   applyFont,
-  render
+  render,
+  computeFitFontSize
 } = require("../clock-runtime.js");
 
 const FIXED_DATE = new Date(2026, 8, 12, 14, 6, 53); // Saturday, September 12, 2026, 14:06:53
@@ -168,4 +169,28 @@ test("render writes the formatted string into the text element", () => {
   const textEl = { style: {} };
   render({ mode: "time", language: "en", hour12: false, showSeconds: false }, textEl, FIXED_DATE);
   assert.equal(textEl.textContent, "14:06");
+});
+
+test("computeFitFontSize: scales up to fill a container wider and taller than the text", () => {
+  // text measured at 100px is 200x50; container is 800x100 -> width-limited scale is 4x, height-limited is 2x
+  const result = computeFitFontSize(800, 100, 200, 50, 100, 1);
+  assert.equal(result, 200); // min(4, 2) * 100
+});
+
+test("computeFitFontSize: shrinks when the container is smaller than the text", () => {
+  // container 100x100, text 200x50 at 100px -> width-limited scale 0.5, height-limited scale 2
+  const result = computeFitFontSize(100, 100, 200, 50, 100, 1);
+  assert.equal(result, 50); // min(0.5, 2) * 100
+});
+
+test("computeFitFontSize: applies the fill ratio as a margin", () => {
+  const result = computeFitFontSize(800, 100, 200, 50, 100, 0.9);
+  assert.equal(result, 180); // 200 * 0.9
+});
+
+test("computeFitFontSize: falls back to baseFontSize for a zero-sized container or text", () => {
+  assert.equal(computeFitFontSize(0, 100, 200, 50, 100, 1), 100);
+  assert.equal(computeFitFontSize(800, 0, 200, 50, 100, 1), 100);
+  assert.equal(computeFitFontSize(800, 100, 0, 50, 100, 1), 100);
+  assert.equal(computeFitFontSize(800, 100, 200, 0, 100, 1), 100);
 });

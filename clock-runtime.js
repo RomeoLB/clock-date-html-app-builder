@@ -88,6 +88,35 @@ function render(config, textEl, now) {
   textEl.textContent = formatClockString(config, now);
 }
 
+// Returns the font size (in the same unit as baseFontSize) that makes a box of
+// textWidth x textHeight (as measured at baseFontSize) the largest it can be
+// while still fitting within containerWidth x containerHeight, times fillRatio.
+function computeFitFontSize(containerWidth, containerHeight, textWidth, textHeight, baseFontSize, fillRatio) {
+  if (containerWidth <= 0 || containerHeight <= 0 || textWidth <= 0 || textHeight <= 0) {
+    return baseFontSize;
+  }
+  const scale = Math.min(containerWidth / textWidth, containerHeight / textHeight);
+  return baseFontSize * scale * fillRatio;
+}
+
+const FIT_BASE_FONT_SIZE = 100;
+const FIT_FILL_RATIO = 0.92;
+
+function fitTextToContainer(container, textEl) {
+  textEl.style.fontSize = FIT_BASE_FONT_SIZE + "px";
+  const containerRect = container.getBoundingClientRect();
+  const textRect = textEl.getBoundingClientRect();
+  const fontSize = computeFitFontSize(
+    containerRect.width,
+    containerRect.height,
+    textRect.width,
+    textRect.height,
+    FIT_BASE_FONT_SIZE,
+    FIT_FILL_RATIO
+  );
+  textEl.style.fontSize = fontSize + "px";
+}
+
 function bootClock(config, overrides) {
   overrides = overrides || {};
   const container = document.getElementById("clock-container");
@@ -97,10 +126,12 @@ function bootClock(config, overrides) {
   applySafeTextRegion(config, container);
   applyColors(config, document.body, textEl);
   applyFont(config, textEl, document, overrides.fontUrl);
-  render(config, textEl);
-  return setInterval(function () {
+  function tick() {
     render(config, textEl);
-  }, 1000);
+    fitTextToContainer(container, textEl);
+  }
+  tick();
+  return setInterval(tick, 1000);
 }
 
 if (typeof module !== "undefined" && module.exports) {
@@ -114,6 +145,8 @@ if (typeof module !== "undefined" && module.exports) {
     applyColors,
     applyFont,
     render,
+    computeFitFontSize,
+    fitTextToContainer,
     bootClock
   };
 }
