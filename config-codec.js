@@ -52,7 +52,6 @@ function buildClockHtml(config) {
     "    width: 100%;\n" +
     "    height: 100%;\n" +
     "    overflow: hidden;\n" +
-    "    background: #000000;\n" +
     "    position: relative;\n" +
     "  }\n" +
     "  #clock-container {\n" +
