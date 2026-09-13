@@ -41,7 +41,38 @@
             <option value="270">270°</option>
           </select>
         </label>
-        <label>Language (BCP-47) <input type="text" name="language"></label>
+        <label>Language
+          <select name="language">
+            <option value="en-US">English (United States)</option>
+            <option value="en-GB">English (United Kingdom)</option>
+            <option value="ar">Arabic</option>
+            <option value="zh-CN">Chinese (Simplified)</option>
+            <option value="zh-TW">Chinese (Traditional)</option>
+            <option value="da">Danish</option>
+            <option value="nl">Dutch</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="he">Hebrew</option>
+            <option value="hi">Hindi</option>
+            <option value="it">Italian</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="no">Norwegian</option>
+            <option value="pl">Polish</option>
+            <option value="pt-PT">Portuguese (Portugal)</option>
+            <option value="pt-BR">Portuguese (Brazil)</option>
+            <option value="ru">Russian</option>
+            <option value="es">Spanish</option>
+            <option value="sv">Swedish</option>
+            <option value="th">Thai</option>
+            <option value="tr">Turkish</option>
+            <option value="vi">Vietnamese</option>
+            <option value="custom">Custom (enter BCP-47 code)...</option>
+          </select>
+        </label>
+        <label id="languageCustomField" hidden>Custom language code (BCP-47)
+          <input type="text" name="languageCustom" placeholder="e.g. en, en-GB, fr, ja">
+        </label>
         <div id="time-only-fields">
           <label>12-hour format
             <select name="hour12">

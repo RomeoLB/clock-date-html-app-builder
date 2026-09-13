@@ -19,10 +19,11 @@ function clearError() {
 
 function readFormConfig() {
   const form = document.getElementById("configurator-form");
+  const selectedLanguage = form.language.value === "custom" ? form.languageCustom.value.trim() : form.language.value;
   return {
     mode: form.mode.value,
     rotation: Number(form.rotation.value),
-    language: form.language.value.trim() || "en",
+    language: selectedLanguage || "en",
     foregroundColor: form.foregroundColor.value,
     backgroundColor: form.backgroundColor.value,
     fontFamily: form.fontFamily.value.trim() || "sans-serif",
@@ -46,7 +47,7 @@ function applyConfigToForm(config) {
   const form = document.getElementById("configurator-form");
   form.mode.value = config.mode;
   form.rotation.value = String(config.rotation);
-  form.language.value = config.language;
+  setLanguageField(config.language);
   form.foregroundColor.value = config.foregroundColor;
   form.backgroundColor.value = config.backgroundColor;
   form.fontFamily.value = config.fontFamily;
@@ -68,6 +69,29 @@ function updateModeVisibility() {
   const isTime = form.mode.value === "time";
   document.getElementById("time-only-fields").hidden = !isTime;
   document.getElementById("date-only-fields").hidden = isTime;
+}
+
+// Selects the dropdown option matching `language` if one exists, otherwise
+// falls back to "custom" and puts the raw value in the free-text field -
+// covers any BCP-47 code not in the curated list (e.g. from an import).
+function setLanguageField(language) {
+  const form = document.getElementById("configurator-form");
+  const hasMatchingOption = Array.from(form.language.options).some(
+    (opt) => opt.value === language && opt.value !== "custom"
+  );
+  if (hasMatchingOption) {
+    form.language.value = language;
+    form.languageCustom.value = "";
+  } else {
+    form.language.value = "custom";
+    form.languageCustom.value = language;
+  }
+  updateLanguageVisibility();
+}
+
+function updateLanguageVisibility() {
+  const form = document.getElementById("configurator-form");
+  document.getElementById("languageCustomField").hidden = form.language.value !== "custom";
 }
 
 function refreshPreview() {
@@ -344,10 +368,12 @@ function initForm() {
   initFitHeightButton();
   form.addEventListener("input", () => {
     updateModeVisibility();
+    updateLanguageVisibility();
     refreshPreview();
   });
   form.addEventListener("change", () => {
     updateModeVisibility();
+    updateLanguageVisibility();
     refreshPreview();
   });
   document.getElementById("preview-frame").addEventListener("load", refreshPreview);

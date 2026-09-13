@@ -1,7 +1,7 @@
 const DEFAULT_CONFIG = {
   mode: "time",
   rotation: 0,
-  language: "en",
+  language: "en-US",
   foregroundColor: "#ffffff",
   backgroundColor: "#000000",
   fontFamily: "sans-serif",
