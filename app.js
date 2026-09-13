@@ -101,6 +101,19 @@ function setFontFile(file) {
   state.fontFile = file;
   state.fontObjectUrl = file ? URL.createObjectURL(file) : null;
   clearInertFilename(document.getElementById("fontFile"));
+
+  // @font-face silently no-ops when bound to a generic name like the default
+  // "sans-serif", so an uploaded font would never actually render. Only
+  // auto-fill when the field is still at its default/generic value, so an
+  // intentionally-chosen custom name is never overwritten.
+  if (file) {
+    const form = document.getElementById("configurator-form");
+    const currentName = form.fontFamily.value;
+    if (currentName.trim() === "" || isGenericFontFamilyName(currentName)) {
+      form.fontFamily.value = deriveFontFamilyName(file.name);
+    }
+  }
+
   refreshPreview();
 }
 
