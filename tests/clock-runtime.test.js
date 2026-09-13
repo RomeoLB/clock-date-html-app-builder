@@ -10,7 +10,8 @@ const {
   applyColors,
   applyFont,
   render,
-  computeFitFontSize
+  computeFitFontSize,
+  resolveTextScale
 } = require("../clock-runtime.js");
 
 const FIXED_DATE = new Date(2026, 8, 12, 14, 6, 53); // Saturday, September 12, 2026, 14:06:53
@@ -291,4 +292,23 @@ test("computeFitFontSize: falls back to baseFontSize for a zero-sized container 
   assert.equal(computeFitFontSize(800, 0, 200, 50, 100, 1), 100);
   assert.equal(computeFitFontSize(800, 100, 0, 50, 100, 1), 100);
   assert.equal(computeFitFontSize(800, 100, 200, 0, 100, 1), 100);
+});
+
+test("resolveTextScale: converts a 10-100 percentage into a 0-1 fraction", () => {
+  assert.equal(resolveTextScale(100), 1);
+  assert.equal(resolveTextScale(50), 0.5);
+  assert.equal(resolveTextScale(10), 0.1);
+});
+
+test("resolveTextScale: defaults to 1 (no scaling) for missing or invalid values", () => {
+  assert.equal(resolveTextScale(undefined), 1);
+  assert.equal(resolveTextScale(null), 1);
+  assert.equal(resolveTextScale(0), 1);
+  assert.equal(resolveTextScale(-20), 1);
+  assert.equal(resolveTextScale(NaN), 1);
+  assert.equal(resolveTextScale("50"), 1);
+});
+
+test("resolveTextScale: clamps values above 100 down to 1 (never enlarges past the auto-fit size)", () => {
+  assert.equal(resolveTextScale(150), 1);
 });

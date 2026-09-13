@@ -36,6 +36,7 @@ function readFormConfig() {
       width: Number(form.safeTextWidth.value),
       height: Number(form.safeTextHeight.value)
     },
+    textScale: Number(form.textScale.value) || 100,
     hour12: form.hour12.value === "" ? null : form.hour12.value === "true",
     showSeconds: form.showSeconds.checked,
     showWeekday: form.showWeekday.checked,
@@ -61,6 +62,7 @@ function applyConfigToForm(config) {
   form.safeTextY.value = String(config.safeTextRegion.y);
   form.safeTextWidth.value = String(config.safeTextRegion.width);
   form.safeTextHeight.value = String(config.safeTextRegion.height);
+  form.textScale.value = String(config.textScale);
   form.hour12.value = config.hour12 === null ? "" : String(config.hour12);
   form.showSeconds.checked = config.showSeconds;
   form.showWeekday.checked = config.showWeekday;

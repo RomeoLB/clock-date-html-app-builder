@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
   backgroundImageUrl: null,
   backgroundStretch: false,
   safeTextRegion: { x: 0, y: 0, width: 100, height: 100 },
+  textScale: 100,
   hour12: null,
   showSeconds: true,
   showWeekday: true,
@@ -28,6 +29,8 @@ const SCHEMA_DOC_COMMENT = [
   " * fontUrl / backgroundImageUrl: relative paths bundled alongside this file, or null for none.",
   " * backgroundStretch: true = background image covers the viewport (cropping); false = contain.",
   " * safeTextRegion: {x, y, width, height} as percentages of the viewport the clock text may use.",
+  " * textScale: 10-100 - percentage of the auto-fit size to actually use; shrink below 100 if a",
+  " *   particular font's glyphs run close to the safeTextRegion edges.",
   " * hour12: true = force 12-hour, false = force 24-hour, null = use the language's default.",
   " * showSeconds: mode:\"time\" only. showWeekday / dateOrder (\"MDY\"/\"DMY\"/\"YMD\"/null): mode:\"date\" only.",
   " */"

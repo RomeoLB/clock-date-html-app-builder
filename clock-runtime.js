@@ -141,7 +141,18 @@ function computeFitFontSize(containerWidth, containerHeight, textWidth, textHeig
 const FIT_BASE_FONT_SIZE = 100;
 const FIT_FILL_RATIO = 0.92;
 
-function fitTextToContainer(container, textEl) {
+// Normalizes a textScale config value (a 10-100 percentage, or missing/invalid)
+// into a 0-1 fraction. Some fonts' glyphs run closer to their own bounding box
+// than others, so the auto-fit size can still look like it's touching the
+// edges for a particular font - textScale lets the user dial it back.
+function resolveTextScale(textScalePercent) {
+  if (typeof textScalePercent !== "number" || !isFinite(textScalePercent) || textScalePercent <= 0) {
+    return 1;
+  }
+  return Math.min(100, textScalePercent) / 100;
+}
+
+function fitTextToContainer(container, textEl, textScalePercent) {
   textEl.style.fontSize = FIT_BASE_FONT_SIZE + "px";
   const containerRect = container.getBoundingClientRect();
   const textRect = textEl.getBoundingClientRect();
@@ -153,7 +164,7 @@ function fitTextToContainer(container, textEl) {
     FIT_BASE_FONT_SIZE,
     FIT_FILL_RATIO
   );
-  textEl.style.fontSize = fontSize + "px";
+  textEl.style.fontSize = (fontSize * resolveTextScale(textScalePercent)) + "px";
 }
 
 function bootClock(config, overrides) {
@@ -167,7 +178,7 @@ function bootClock(config, overrides) {
   applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError);
   function tick() {
     render(config, textEl);
-    fitTextToContainer(container, textEl);
+    fitTextToContainer(container, textEl, config.textScale);
   }
   tick();
   return setInterval(tick, 1000);
@@ -185,6 +196,7 @@ if (typeof module !== "undefined" && module.exports) {
     applyFont,
     render,
     computeFitFontSize,
+    resolveTextScale,
     fitTextToContainer,
     bootClock
   };
