@@ -116,11 +116,35 @@ banner if your custom font isn't showing up.
 
 ## Deploying to BrightSign
 
-Unzip the downloaded file and point a BrightSign HTML5 zone at `clock.html`
-(the `roHtmlWidget` rectangle in your presentation's launcher is the "zone"
-referred to above - match its dimensions in the Preview Zone Size fields
-before you finalize the layout, so what you saw in the preview matches what
-plays on the actual device).
+These steps use BrightAuthor:connected's web UI to add the downloaded zip
+to a presentation as an HTML component.
+
+1. Go to **Content → New Component → Upload HTML Site / Node.js App**.
+
+   ![Content menu, with New Component and Upload HTML Site / Node.js App highlighted](images/New-component.png)
+
+2. In the **Upload HTML site/Node.js App** dialog that opens:
+   - **Site Name** - give it a name, e.g. `clock`.
+   - Leave **Upload as Internal Web Page** unchecked.
+   - Click **Browse to select site zip** and choose the zip file you
+     downloaded from the configurator.
+   - **Select base page for site** - this should already read `clock.html`
+     once the zip is selected (that's the filename the configurator's zip
+     always uses for the widget itself, no matter what you named the zip).
+   - Click **Upload**.
+
+   ![Upload HTML site/Node.js App dialog with Site Name "clock", Site Specification "clock.zip", and base page "clock.html"](images/upload-html-site.png)
+
+3. Add the uploaded component to a State in your presentation, sized and
+   positioned to match the zone dimensions you set earlier in the
+   configurator's Preview Zone Size fields.
+
+   ![Presentation editor with the state and the clock component selected](images/name-state-and-select-component.png)
+
+**Make sure the state name, the Site Name from step 2, and the component
+you select in step 3 all match** (e.g. all named `clock`). Mismatched
+names between these three are a common reason the widget doesn't show up
+as expected.
 
 ## Coming back to make changes later
 
