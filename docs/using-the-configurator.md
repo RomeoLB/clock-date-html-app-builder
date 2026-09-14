@@ -8,8 +8,9 @@ happy with it.
 
 ## Opening the tool
 
-This tool is hosted on GitHub Pages - open this repository's GitHub Pages
-URL in a browser and you're ready to go, no install or setup required.
+This tool is hosted on GitHub Pages - open
+**<https://romeolb.github.io/clock-date-html-app-builder/>** in a browser
+and you're ready to go, no install or setup required.
 
 If instead you're running it from a local copy of the repository, serve
 the `clock-configurator` folder over `http://` or `https://` (a local
