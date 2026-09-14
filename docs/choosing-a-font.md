@@ -12,10 +12,9 @@ This was confirmed directly: **Zen Dots** (`zen-dots-v14-latin-regular.woff2`)
 renders digit `1` at ~27px and digit `0` at ~62px at the same font-size - more
 than double - which is why it visibly wobbles.
 
-There is currently no automatic fix for this in the configurator (an
-automatic fixed-width-per-digit approach was tried and reverted - see
-below), so the reliable way to avoid it is to pick a font that doesn't have
-the problem in the first place.
+There is currently no automatic fix for this in the configurator, so the
+reliable way to avoid it is to pick a font that doesn't have the problem
+in the first place.
 
 ## How to pick a safe font
 
@@ -83,15 +82,3 @@ blown up large.
 In short: for a legibility-first display like this, a **medium/bold-weight
 geometric sans-serif** is the safest bet on both counts - it scales well
 visually, and typically has tabular digits too.
-
-## Why this isn't just fixed automatically
-
-A fix was implemented that measured the widest digit once and rendered every
-digit in its own fixed-width cell, eliminating the wobble regardless of the
-font. It worked in every desktop-browser test, but broke sizing badly on an
-actual BrightSign player and was reverted (see the project's commit history
-around "Eliminate horizontal text wobble" / its revert). The suspected cause
-is a timing difference in how the BrightSign HTML widget's layout engine
-reports element sizes compared to a desktop browser, but this couldn't be
-confirmed without further on-device testing. Until that's resolved safely,
-font choice is the dependable way to avoid the wobble.
