@@ -32,6 +32,12 @@ or background image if you load the `.zip` (loading a standalone `.html`
 restores every setting except the actual font/image file, since only the
 zip carries those bytes).
 
+Want to try this out before building your own? [`docs/example-test-package/clock.zip`](example-test-package/clock.zip)
+in this repository is a ready-made example that already has a custom font
+and a custom background image set up - load it here to see a full
+configuration restored, including both assets, then experiment with
+changing it.
+
 ## Layout / Safe Text Region (%)
 
 This section controls where the clock sits and how big the text is.
