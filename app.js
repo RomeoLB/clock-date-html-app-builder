@@ -292,7 +292,15 @@ function restoreAssetFromImport(filename, zipEntries, setter, fileInputEl) {
     return;
   }
   if (zipEntries && zipEntries[filename]) {
-    setter(new File([zipEntries[filename]], filename));
+    const file = new File([zipEntries[filename]], filename);
+    // Assigning a File to state alone doesn't touch the <input type="file">
+    // itself, so its native "No file chosen" label stays stale even though
+    // the asset is actually active. DataTransfer is the standard way to set
+    // a real FileList on the input so the browser's own label updates too.
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInputEl.files = dataTransfer.files;
+    setter(file);
   } else {
     showInertFilename(fileInputEl, filename);
   }
