@@ -36,10 +36,16 @@
       </fieldset>
 
       <fieldset>
-        <legend>Preview Zone Size</legend>
-        <label>Width (px) <input type="number" name="zoneWidth" min="1" step="1"></label>
-        <label>Height (px) <input type="number" name="zoneHeight" min="1" step="1"></label>
+        <legend>Layout / Safe Text Region (%)</legend>
+        <label>Preview zone width (px) <input type="number" name="zoneWidth" min="1" step="1"></label>
+        <label>Preview zone height (px) <input type="number" name="zoneHeight" min="1" step="1"></label>
         <p id="zoneSizeNote">Match this to the roRectangle dimensions in your autorun.brs so the preview's proportions match the actual BrightSign zone - this is preview-only, it isn't saved into the exported clock.html.</p>
+        <label>X <input type="number" name="safeTextX" min="0" max="100"></label>
+        <label>Y <input type="number" name="safeTextY" min="0" max="100"></label>
+        <label>Width <input type="number" name="safeTextWidth" min="0" max="100"></label>
+        <label>Height <input type="number" name="safeTextHeight" min="0" max="100"></label>
+        <button type="button" id="fitHeightButton">Fit height to text</button>
+        <label>Text scale (%) <input type="number" name="textScale" min="10" max="100" step="1"></label>
       </fieldset>
 
       <fieldset>
@@ -137,16 +143,6 @@
           <input type="file" name="backgroundFile" id="backgroundFile" accept="image/*">
         </label>
         <button type="button" id="clearBackgroundFile">Clear background image</button>
-      </fieldset>
-
-      <fieldset>
-        <legend>Layout / Safe Text Region (%)</legend>
-        <label>X <input type="number" name="safeTextX" min="0" max="100"></label>
-        <label>Y <input type="number" name="safeTextY" min="0" max="100"></label>
-        <label>Width <input type="number" name="safeTextWidth" min="0" max="100"></label>
-        <label>Height <input type="number" name="safeTextHeight" min="0" max="100"></label>
-        <button type="button" id="fitHeightButton">Fit height to text</button>
-        <label>Text scale (%) <input type="number" name="textScale" min="10" max="100" step="1"></label>
       </fieldset>
 
       <fieldset>
