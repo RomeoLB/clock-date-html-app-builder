@@ -8,9 +8,13 @@ happy with it.
 
 ## Opening the tool
 
-Serve the `clock-configurator` folder over `http://` or `https://` (a local
-static server, or a real web host) and open `index.html`. Double-clicking
-the file to open it directly (`file://`) will work for editing and
+This tool is hosted on GitHub Pages - open this repository's GitHub Pages
+URL in a browser and you're ready to go, no install or setup required.
+
+If instead you're running it from a local copy of the repository, serve
+the `clock-configurator` folder over `http://` or `https://` (a local
+static server, or any web host) and open `index.html` that way. Double-
+clicking the file to open it directly (`file://`) will work for editing and
 previewing, but the **Generate & Download** step will fail - it needs to be
 served over http(s) to fetch its own runtime file.
 
