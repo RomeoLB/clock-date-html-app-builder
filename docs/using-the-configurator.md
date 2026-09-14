@@ -125,6 +125,10 @@ banner if your custom font isn't showing up.
 These steps use BrightAuthor:connected's web UI to add the downloaded zip
 to a presentation as an HTML component.
 
+> BrightSign Author Plus does not support the native Clock zone type - this
+> HTML-widget workflow (an Image zone hosting the uploaded component) is
+> how to display a live date/time in an Author Plus presentation.
+
 1. Go to **Content → New Component → Upload HTML Site / Node.js App**.
 
    ![Content menu, with New Component and Upload HTML Site / Node.js App highlighted](images/New-component.png)
@@ -141,9 +145,11 @@ to a presentation as an HTML component.
 
    ![Upload HTML site/Node.js App dialog with Site Name "clock", Site Specification "clock.zip", and base page "clock.html"](images/upload-html-site.png)
 
-3. Add the uploaded component to a State in your presentation, sized and
-   positioned to match the zone dimensions you set earlier in the
-   configurator's Preview Zone Size fields.
+3. Add the uploaded component to a State in your presentation. The state's
+   zone must be a plain **Image** zone (not Video or another zone type) -
+   create or use an Image zone, sized and positioned to match the zone
+   dimensions you set earlier in the configurator's Preview Zone Size
+   fields, then select the uploaded component for it.
 
    ![Presentation editor with the state and the clock component selected](images/name-state-and-select-component.png)
 
