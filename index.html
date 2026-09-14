@@ -9,7 +9,16 @@
   fieldset { margin-bottom: 12px; }
   label { display: block; margin: 6px 0; }
   #preview-pane { flex: 1 1 320px; min-width: 280px; }
-  #preview-frame { width: 100%; aspect-ratio: 16 / 9; border: 1px solid #ccc; background: #000; }
+  #preview-frame {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 70vh;
+    aspect-ratio: 16 / 9;
+    border: 1px solid #ccc;
+    background: #000;
+  }
+  #zoneSizeNote { color: #666; font-size: 0.9em; margin: 4px 0 0; }
   #error-banner { background: #fdd; color: #900; padding: 8px 12px; margin-bottom: 12px; }
   #error-banner[hidden] { display: none; }
 </style>
@@ -23,6 +32,13 @@
         <label>Load a previously generated .zip or .html file
           <input type="file" id="importFile" accept=".zip,.html">
         </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Preview Zone Size</legend>
+        <label>Width (px) <input type="number" name="zoneWidth" min="1" step="1"></label>
+        <label>Height (px) <input type="number" name="zoneHeight" min="1" step="1"></label>
+        <p id="zoneSizeNote">Match this to the roRectangle dimensions in your autorun.brs so the preview's proportions match the actual BrightSign zone - this is preview-only, it isn't saved into the exported clock.html.</p>
       </fieldset>
 
       <fieldset>

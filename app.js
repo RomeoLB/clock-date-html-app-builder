@@ -101,6 +101,21 @@ function updateBackgroundTransparencyVisibility() {
   form.backgroundColor.disabled = form.backgroundTransparent.checked;
 }
 
+// Preview-only: makes the preview iframe's own aspect ratio match the
+// BrightSign zone it'll actually be deployed into (the roRectangle in
+// autorun.brs), since safeTextRegion and the auto-fit sizing are both
+// percentage-based and their real-world proportions depend on that ratio.
+// Not part of clockConfig - the zone size is determined by the BrightScript
+// launcher, not by this widget.
+function updateZoneSize() {
+  const form = document.getElementById("configurator-form");
+  const width = Number(form.zoneWidth.value);
+  const height = Number(form.zoneHeight.value);
+  if (width > 0 && height > 0) {
+    document.getElementById("preview-frame").style.aspectRatio = width + " / " + height;
+  }
+}
+
 function updateLanguageVisibility() {
   const form = document.getElementById("configurator-form");
   document.getElementById("languageCustomField").hidden = form.language.value !== "custom";
@@ -381,6 +396,9 @@ function initFitHeightButton() {
 
 function initForm() {
   const form = document.getElementById("configurator-form");
+  form.zoneWidth.value = "1920";
+  form.zoneHeight.value = "1080";
+  updateZoneSize();
   applyConfigToForm(DEFAULT_CONFIG);
   initFileInputs();
   initExport();
@@ -390,12 +408,14 @@ function initForm() {
     updateModeVisibility();
     updateLanguageVisibility();
     updateBackgroundTransparencyVisibility();
+    updateZoneSize();
     refreshPreview();
   });
   form.addEventListener("change", () => {
     updateModeVisibility();
     updateLanguageVisibility();
     updateBackgroundTransparencyVisibility();
+    updateZoneSize();
     refreshPreview();
   });
   document.getElementById("preview-frame").addEventListener("load", refreshPreview);
