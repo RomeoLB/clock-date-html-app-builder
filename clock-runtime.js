@@ -53,6 +53,11 @@ function applyRotation(config, container) {
 function applyBackgroundImage(config, body, imageUrl) {
   const url = imageUrl !== undefined ? imageUrl : config.backgroundImageUrl;
   if (!url) {
+    // Revoking a blob: URL only blocks future fetches of it - it doesn't
+    // retroactively un-render an image the browser already decoded and
+    // cached for this property's current value, so leaving the old
+    // url(...) in place would keep showing the cleared image.
+    body.style.backgroundImage = "";
     return;
   }
   body.style.backgroundImage = 'url("' + url + '")';

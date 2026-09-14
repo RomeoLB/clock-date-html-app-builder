@@ -107,10 +107,19 @@ test("applyRotation sets a CSS rotate transform", () => {
   assert.equal(container.style.transform, "rotate(180deg)");
 });
 
-test("applyBackgroundImage: no-op when no url and no override", () => {
+test("applyBackgroundImage: clears backgroundImage when there's no url and no override", () => {
   const body = { style: {} };
   applyBackgroundImage({ backgroundImageUrl: null, backgroundStretch: false }, body);
-  assert.deepEqual(body.style, {});
+  assert.deepEqual(body.style, { backgroundImage: "" });
+});
+
+test("applyBackgroundImage: clears a previously-set backgroundImage when the url is later removed", () => {
+  const body = { style: {} };
+  applyBackgroundImage({ backgroundImageUrl: "bg.jpg", backgroundStretch: false }, body);
+  assert.equal(body.style.backgroundImage, 'url("bg.jpg")');
+
+  applyBackgroundImage({ backgroundImageUrl: null, backgroundStretch: false }, body);
+  assert.equal(body.style.backgroundImage, "");
 });
 
 test("applyBackgroundImage: uses config url, cover when stretched", () => {
