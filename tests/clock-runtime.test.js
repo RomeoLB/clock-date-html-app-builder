@@ -2,6 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   buildIntlOptions,
+  toIntlTimeZone,
+  readPlayerTimeZone,
   reorderDateParts,
   formatClockString,
   applyRotation,
@@ -366,4 +368,57 @@ test("resolveTextScale: defaults to 1 (no scaling) for missing or invalid values
 
 test("resolveTextScale: clamps values above 100 down to 1 (never enlarges past the auto-fit size)", () => {
   assert.equal(resolveTextScale(150), 1);
+});
+
+const UTC_NOON = new Date(Date.UTC(2026, 8, 12, 12, 0, 0));
+
+test("formatClockString: timeZone option shifts the displayed time", () => {
+  const base = { mode: "time", language: "en-GB", showSeconds: false, hour12: false };
+  assert.equal(formatClockString({ ...base, timeZone: "UTC" }, UTC_NOON), "12:00");
+  assert.equal(formatClockString({ ...base, timeZone: "Asia/Tokyo" }, UTC_NOON), "21:00");
+});
+
+test("toIntlTimeZone: maps BrightSign's own zone names, e.g. GMTBST seen on a real player", () => {
+  assert.equal(toIntlTimeZone("GMTBST"), "Europe/London");
+  assert.equal(toIntlTimeZone("EST"), "America/New_York");
+  assert.equal(toIntlTimeZone("MST1"), "America/Phoenix");
+  assert.equal(toIntlTimeZone("GMT+3"), "Etc/GMT-3");
+  assert.equal(toIntlTimeZone("GMT-8"), "Etc/GMT+8");
+  assert.equal(toIntlTimeZone("GMT+5:30"), "Asia/Kolkata");
+  assert.equal(toIntlTimeZone("GMT+10:30"), "+10:30");
+  assert.equal(toIntlTimeZone("GMT-4:30"), "-04:30");
+  assert.equal(toIntlTimeZone("GMT-14"), "-14:00");
+  assert.equal(toIntlTimeZone("GMT+15"), null);
+});
+
+test("formatClockString: applies a fixed UTC offset such as +10:30", () => {
+  const config = { mode: "time", language: "en-GB", hour12: false, showSeconds: false, timeZone: "+10:30" };
+  assert.equal(formatClockString(config, new Date("2026-01-01T00:00:00Z")), "10:30");
+  assert.equal(formatClockString(Object.assign({}, config, { timeZone: "-04:30" }), new Date("2026-01-01T00:00:00Z")), "19:30");
+});
+
+test("toIntlTimeZone: accepts IANA names and POSIX standard offsets, rejects junk", () => {
+  assert.equal(toIntlTimeZone("America/Los_Angeles"), "America/Los_Angeles");
+  assert.equal(toIntlTimeZone("POSIX:EST5EDT,M3.2.0,M11.1.0"), "Etc/GMT+5");
+  assert.equal(toIntlTimeZone("POSIX:CET-1CEST,M3.5.0,M10.5.0/3"), "Etc/GMT-1");
+  assert.equal(toIntlTimeZone("POSIX:GMT0"), "UTC");
+  assert.equal(toIntlTimeZone("POSIX:IST-5:30"), null);
+  assert.equal(toIntlTimeZone("Not/AZone"), null);
+  assert.equal(toIntlTimeZone(""), null);
+  assert.equal(toIntlTimeZone(undefined), null);
+});
+
+test("readPlayerTimeZone: reads getTimeZone from the systemtime module", async () => {
+  const loader = (name) => {
+    assert.equal(name, "@brightsign/systemtime");
+    return class { getTimeZone() { return Promise.resolve("Europe/London"); } };
+  };
+  assert.equal(await readPlayerTimeZone(loader), "Europe/London");
+});
+
+test("readPlayerTimeZone: falls back to null without the module or on failure", async () => {
+  assert.equal(await readPlayerTimeZone(null), null);
+  assert.equal(await readPlayerTimeZone(() => { throw new Error("no module"); }), null);
+  const rejecting = () => class { getTimeZone() { return Promise.reject(new Error("boom")); } };
+  assert.equal(await readPlayerTimeZone(rejecting), null);
 });
