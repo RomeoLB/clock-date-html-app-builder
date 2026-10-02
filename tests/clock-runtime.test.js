@@ -378,6 +378,25 @@ test("formatClockString: timeZone option shifts the displayed time", () => {
   assert.equal(formatClockString({ ...base, timeZone: "Asia/Tokyo" }, UTC_NOON), "21:00");
 });
 
+test("toIntlTimeZone: maps BrightSign's own zone names, e.g. GMTBST seen on a real player", () => {
+  assert.equal(toIntlTimeZone("GMTBST"), "Europe/London");
+  assert.equal(toIntlTimeZone("EST"), "America/New_York");
+  assert.equal(toIntlTimeZone("MST1"), "America/Phoenix");
+  assert.equal(toIntlTimeZone("GMT+3"), "Etc/GMT-3");
+  assert.equal(toIntlTimeZone("GMT-8"), "Etc/GMT+8");
+  assert.equal(toIntlTimeZone("GMT+5:30"), "Asia/Kolkata");
+  assert.equal(toIntlTimeZone("GMT+10:30"), "+10:30");
+  assert.equal(toIntlTimeZone("GMT-4:30"), "-04:30");
+  assert.equal(toIntlTimeZone("GMT-14"), "-14:00");
+  assert.equal(toIntlTimeZone("GMT+15"), null);
+});
+
+test("formatClockString: applies a fixed UTC offset such as +10:30", () => {
+  const config = { mode: "time", language: "en-GB", hour12: false, showSeconds: false, timeZone: "+10:30" };
+  assert.equal(formatClockString(config, new Date("2026-01-01T00:00:00Z")), "10:30");
+  assert.equal(formatClockString(Object.assign({}, config, { timeZone: "-04:30" }), new Date("2026-01-01T00:00:00Z")), "19:30");
+});
+
 test("toIntlTimeZone: accepts IANA names and POSIX standard offsets, rejects junk", () => {
   assert.equal(toIntlTimeZone("America/Los_Angeles"), "America/Los_Angeles");
   assert.equal(toIntlTimeZone("POSIX:EST5EDT,M3.2.0,M11.1.0"), "Etc/GMT+5");
