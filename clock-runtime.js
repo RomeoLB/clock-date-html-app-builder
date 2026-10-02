@@ -7,11 +7,17 @@ function buildIntlOptions(config) {
     if (config.hour12 !== null) {
       options.hour12 = config.hour12;
     }
+    if (config.timeZone) {
+      options.timeZone = config.timeZone;
+    }
     return options;
   }
   const options = { year: "numeric", month: "long", day: "numeric" };
   if (config.showWeekday) {
     options.weekday = "long";
+  }
+  if (config.timeZone) {
+    options.timeZone = config.timeZone;
   }
   return options;
 }
@@ -174,6 +180,62 @@ function fitTextToContainer(container, textEl, textScalePercent) {
   textEl.style.fontSize = (fontSize * resolveTextScale(textScalePercent)) + "px";
 }
 
+// An HTML widget's own Intl/Date report UTC on a BrightSign player, so the
+// zone the player is actually set to has to be read from its systemtime
+// module. Its getTimeZone() returns a zone name, or "POSIX:<tz string>" if
+// the player was given a POSIX-format zone. Returns an IANA name Intl accepts,
+// or null if it can't be mapped (callers then keep the runtime default).
+function toIntlTimeZone(playerZone) {
+  if (typeof playerZone !== "string" || playerZone === "") {
+    return null;
+  }
+  let candidate = playerZone;
+  if (candidate.indexOf("POSIX:") === 0) {
+    // Only the standard-time offset can be honoured (e.g. "EST5EDT,M3.2.0,..." ->
+    // UTC-5); a POSIX string's own DST rules aren't evaluated.
+    const match = candidate.slice(6).match(/^[A-Za-z]{3,}([+-]?)(\d{1,2})(?::(\d{2}))?/);
+    if (!match || (match[3] && match[3] !== "00")) {
+      return null;
+    }
+    const hours = parseInt(match[2], 10);
+    if (hours === 0) {
+      return "UTC";
+    }
+    // POSIX offsets are positive WEST of UTC; Etc/GMT zones use the same sign.
+    candidate = "Etc/GMT" + (match[1] === "-" ? "-" : "+") + hours;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate });
+    return candidate;
+  } catch (e) {
+    return null;
+  }
+}
+
+// loadModule is injected for testing; on a player it is the global require.
+function readPlayerTimeZone(loadModule) {
+  try {
+    if (typeof loadModule !== "function") {
+      return Promise.resolve(null);
+    }
+    const SystemTime = loadModule("@brightsign/systemtime");
+    return Promise.resolve(new SystemTime().getTimeZone()).then(function (zone) {
+      console.log("[clock-time] player reported time zone:", zone);
+      const mapped = toIntlTimeZone(zone);
+      if (!mapped) {
+        console.warn("[clock-time] could not map player time zone", zone, "- using runtime default");
+      }
+      return mapped;
+    }).catch(function (err) {
+      console.warn("[clock-time] getTimeZone failed - using runtime default:", err && err.message);
+      return null;
+    });
+  } catch (e) {
+    // Not running on a player (e.g. the configurator preview): no such module.
+    return Promise.resolve(null);
+  }
+}
+
 function bootClock(config, overrides) {
   overrides = overrides || {};
   const container = document.getElementById("clock-container");
@@ -195,17 +257,34 @@ function bootClock(config, overrides) {
 
   applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
 
-  render(config, textEl);
+  // Formatting uses its own copy so the player's zone, once read, can be
+  // layered on without altering the caller's config.
+  const displayConfig = Object.assign({}, config);
+
+  render(displayConfig, textEl);
   refit();
 
+  const readZone = overrides.readTimeZone || function () {
+    return readPlayerTimeZone(typeof require === "function" ? require : null);
+  };
+  readZone().then(function (zone) {
+    if (zone) {
+      displayConfig.timeZone = zone;
+      render(displayConfig, textEl);
+      refit();
+    }
+  });
+
   return setInterval(function () {
-    render(config, textEl);
+    render(displayConfig, textEl);
   }, 1000);
 }
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildIntlOptions,
+    toIntlTimeZone,
+    readPlayerTimeZone,
     reorderDateParts,
     formatClockString,
     applyRotation,

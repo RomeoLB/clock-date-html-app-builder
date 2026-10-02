@@ -77,6 +77,18 @@ This section controls where the clock sits and how big the text is.
 - **Date order** (Date mode) - override the locale's natural date order
   with MDY / DMY / YMD, or leave at "Locale default".
 
+## Time zone
+
+There is nothing to set here: on a BrightSign player the clock reads the
+time zone the player itself is configured with (via the player's
+`@brightsign/systemtime` module) and shows local time in it, including
+daylight saving. In the configurator's preview the time shows in your
+browser's own zone. If the player's zone can't be read, the clock falls back
+to what the widget reports, which is UTC. To check on a device, open the
+remote DevTools console and look for the `[clock-time] player reported time
+zone:` line. (A player zone set in POSIX format is honoured for its standard
+offset only.)
+
 ## Colors
 
 - **Text color** / **Background color** - any color.
