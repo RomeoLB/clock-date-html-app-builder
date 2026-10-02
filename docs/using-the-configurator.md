@@ -79,7 +79,10 @@ This section controls where the clock sits and how big the text is.
 
 ## Time zone
 
-There is nothing to set here: on a BrightSign player the clock reads the
+There is nothing to set in the configurator, but the component must have
+**Enable Node.js** and **Enable BrightSign JavaScript objects** ticked when
+you deploy it (see [Deploying to BrightSign](#deploying-to-brightsign), step 4).
+On a BrightSign player the clock then reads the
 time zone the player itself is configured with (via the player's
 `@brightsign/systemtime` module) and shows local time in it, including
 daylight saving. In the configurator's preview the time shows in your
@@ -164,6 +167,14 @@ to a presentation as an HTML component.
    fields, then select the uploaded component for it.
 
    ![Presentation editor with the state and the clock component selected](images/name-state-and-select-component.png)
+
+4. Select the HTML5 widget in the presentation and, in its **Options**, tick both
+   **Enable Node.js** and **Enable BrightSign JavaScript objects**. The
+   clock needs these to read the player's time zone from the
+   `@brightsign/systemtime` module; without them it falls back to the time
+   zone the HTML widget reports, which can be UTC on some players.
+
+   ![Options panel with Enable Node.js and Enable BrightSign JavaScript objects ticked](images/enable-nodejs-options.png)
 
 **Make sure the state name, the Site Name from step 2, and the component
 you select in step 3 all match** (e.g. all named `clock`). Mismatched
