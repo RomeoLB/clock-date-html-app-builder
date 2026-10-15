@@ -10,8 +10,8 @@ ready-to-deploy zip when you're done.
 ## Features
 
 - Live preview that matches your actual presentation zone's aspect ratio
-- Time or date mode, with locale-aware formatting (12/24-hour, weekday,
-  date order) for a curated list of languages, or any custom BCP-47 code
+- Time or date mode, with locale-aware formatting (12/24-hour, long/short names,
+  custom date order and separators) for a curated list of languages, or any custom BCP-47 code
 - Upload a custom font or background image, or link straight to Google
   Fonts to find one
 - Auto-sized text that fills the configured safe area without overflowing

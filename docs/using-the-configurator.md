@@ -73,9 +73,18 @@ This section controls where the clock sits and how big the text is.
   that many locales, including UK English, default to 24-hour - this isn't
   a bug, pick "12-hour" explicitly if you want AM/PM regardless of locale).
 - **Show seconds** (Time mode).
-- **Show weekday** (Date mode).
-- **Date order** (Date mode) - override the locale's natural date order
-  with MDY / DMY / YMD, or leave at "Locale default".
+- **Weekday names / Month names** (Date mode) - long ("Wednesday",
+  "October") or short ("Wed", "Oct"). Each is set separately, so
+  "Wed, October 14" is possible. Short names come from the language's own
+  data, so some languages add a full stop (e.g. "mer.") and English doesn't.
+- **Use the language's own date order** (Date mode) - ticked by default, the
+  date follows the language's usual order and punctuation; only the weekday
+  can be switched off. Untick it to arrange the date yourself:
+  - tick the parts to show (weekday, month, day, year) and reorder them with
+    the arrows;
+  - type the text that goes after each part (a space, a comma, a slash, or
+    anything you like). Each gap has its own text, e.g.
+    "October 14, 2026 Wednesday" or "Wed - Oct 14 2026".
 
 ## Time zone
 

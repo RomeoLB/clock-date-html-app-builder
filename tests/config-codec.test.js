@@ -24,7 +24,7 @@ test("round-trips a config whose nested safeTextRegion has its own braces, witho
   const config = {
     ...DEFAULT_CONFIG,
     mode: "date",
-    dateOrder: "DMY",
+    dateFormat: { locale: false, parts: ["day", "month"], separators: ["/"], weekdayStyle: "short", monthStyle: "short" },
     safeTextRegion: { x: 25, y: 25, width: 50, height: 50 }
   };
   const html = buildClockHtml(config);

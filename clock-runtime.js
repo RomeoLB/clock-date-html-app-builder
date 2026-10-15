@@ -25,9 +25,10 @@ function buildIntlOptions(config) {
     }
     return options;
   }
-  const options = { year: "numeric", month: "long", day: "numeric" };
-  if (config.showWeekday) {
-    options.weekday = "long";
+  const dateFormat = normalizeDateFormat(config);
+  const options = { year: "numeric", month: dateFormat.monthStyle, day: "numeric" };
+  if (dateFormat.parts.indexOf("weekday") !== -1) {
+    options.weekday = dateFormat.weekdayStyle;
   }
   if (config.timeZone) {
     options.timeZone = fixedOffsetMinutes(config.timeZone) === null ? config.timeZone : "UTC";
@@ -35,20 +36,65 @@ function buildIntlOptions(config) {
   return options;
 }
 
-function reorderDateParts(parts, dateOrder) {
-  const findPart = (type) => parts.find(function (p) { return p.type === type; });
-  const day = findPart("day");
-  const month = findPart("month");
-  const year = findPart("year");
-  const weekday = findPart("weekday");
+const DATE_PART_TYPES = ["weekday", "month", "day", "year"];
 
-  const partsByLetter = { D: day, M: month, Y: year };
-  const ordered = dateOrder.split("").map(function (ch) { return partsByLetter[ch]; }).filter(Boolean);
-  let result = ordered.map(function (p) { return p.value; }).join("/");
+// Returns the complete date settings for a config. Configs written before
+// dateFormat existed carried showWeekday / dateOrder instead; those are
+// converted here so older packages and imported files keep their look.
+function normalizeDateFormat(config) {
+  const given = config.dateFormat || {};
+  let locale = given.locale;
+  let parts = given.parts;
+  let separators = given.separators;
 
-  if (weekday) {
-    result = weekday.value + ", " + result;
+  if (!Array.isArray(parts)) {
+    parts = DATE_PART_TYPES.slice();
+    if (config.showWeekday === false) {
+      parts.shift();
+    }
+    if (typeof config.dateOrder === "string" && config.dateOrder) {
+      const byLetter = { D: "day", M: "month", Y: "year" };
+      const ordered = config.dateOrder.split("").map(function (ch) { return byLetter[ch]; });
+      parts = (parts[0] === "weekday" ? ["weekday"] : []).concat(ordered);
+      // The old format put ", " after the weekday and "/" between the rest.
+      separators = parts.slice(1).map(function (part, i) { return parts[i] === "weekday" ? ", " : "/"; });
+      locale = false;
+    }
   }
+  parts = parts.filter(function (p) { return DATE_PART_TYPES.indexOf(p) !== -1; });
+
+  const defaultSeparator = function (i) {
+    // English's "Weekday, Month Day, Year" when nothing is specified.
+    return parts[i] === "weekday" || (parts[i] === "day" && parts[i + 1] === "year") ? ", " : " ";
+  };
+  const filled = [];
+  for (let i = 0; i < parts.length - 1; i++) {
+    filled.push(Array.isArray(separators) && typeof separators[i] === "string" ? separators[i] : defaultSeparator(i));
+  }
+
+  return {
+    locale: locale !== false,
+    parts: parts,
+    separators: filled,
+    weekdayStyle: given.weekdayStyle === "short" ? "short" : "long",
+    monthStyle: given.monthStyle === "short" ? "short" : "long"
+  };
+}
+
+// Builds the date text from Intl's parts, in the user's order and with the
+// user's separator in each gap.
+function joinDateParts(intlParts, dateFormat) {
+  let result = "";
+  dateFormat.parts.forEach(function (type, i) {
+    const part = intlParts.find(function (p) { return p.type === type; });
+    if (!part) {
+      return;
+    }
+    if (result !== "") {
+      result += dateFormat.separators[i - 1];
+    }
+    result += part.value;
+  });
   return result;
 }
 
@@ -61,9 +107,11 @@ function formatClockString(config, now) {
   const options = buildIntlOptions(config);
   const formatter = new Intl.DateTimeFormat(config.language, options);
 
-  if (config.mode === "date" && config.dateOrder) {
-    const parts = formatter.formatToParts(now);
-    return reorderDateParts(parts, config.dateOrder);
+  if (config.mode === "date") {
+    const dateFormat = normalizeDateFormat(config);
+    if (!dateFormat.locale) {
+      return joinDateParts(formatter.formatToParts(now), dateFormat);
+    }
   }
 
   return formatter.format(now);
@@ -373,7 +421,7 @@ if (typeof module !== "undefined" && module.exports) {
     buildIntlOptions,
     toIntlTimeZone,
     readPlayerTimeZone,
-    reorderDateParts,
+    normalizeDateFormat,
     formatClockString,
     applyRotation,
     applyBackgroundImage,

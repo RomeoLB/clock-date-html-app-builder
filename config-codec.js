@@ -12,8 +12,13 @@ const DEFAULT_CONFIG = {
   textScale: 100,
   hour12: null,
   showSeconds: true,
-  showWeekday: true,
-  dateOrder: null
+  dateFormat: {
+    locale: true,
+    parts: ["weekday", "month", "day", "year"],
+    separators: [", ", " ", ", "],
+    weekdayStyle: "long",
+    monthStyle: "long"
+  }
 };
 
 const SCHEMA_DOC_COMMENT = [
@@ -32,7 +37,13 @@ const SCHEMA_DOC_COMMENT = [
   " * textScale: 10-100 - percentage of the auto-fit size to actually use; shrink below 100 if a",
   " *   particular font's glyphs run close to the safeTextRegion edges.",
   " * hour12: true = force 12-hour, false = force 24-hour, null = use the language's default.",
-  " * showSeconds: mode:\"time\" only. showWeekday / dateOrder (\"MDY\"/\"DMY\"/\"YMD\"/null): mode:\"date\" only.",
+  " * showSeconds: mode:\"time\" only.",
+  " * dateFormat: mode:\"date\" only.",
+  " *   parts: which of \"weekday\", \"month\", \"day\", \"year\" to show, in display order.",
+  " *   separators: the text placed in each gap between parts (one fewer entry than parts).",
+  " *   locale: true = use the language's own order and punctuation (parts then only decides",
+  " *     whether the weekday shows); false = use the parts order and separators above.",
+  " *   weekdayStyle / monthStyle: \"long\" (Wednesday, October) or \"short\" (Wed, Oct).",
   " */"
 ].join("\n");
 
