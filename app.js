@@ -39,9 +39,99 @@ function readFormConfig() {
     textScale: Number(form.textScale.value) || 100,
     hour12: form.hour12.value === "" ? null : form.hour12.value === "true",
     showSeconds: form.showSeconds.checked,
-    showWeekday: form.showWeekday.checked,
-    dateOrder: form.dateOrder.value === "" ? null : form.dateOrder.value
+    dateFormat: readDateFormat(form)
   };
+}
+
+// The date rows always list all four parts so a hidden one can be shown again;
+// each row owns the separator that follows it. Only visible rows are exported.
+const DATE_PART_LABELS = { weekday: "Weekday", month: "Month", day: "Day", year: "Year" };
+const dateRows = [];
+
+function readDateFormat(form) {
+  const visible = dateRows.filter((row) => row.visible);
+  return {
+    locale: form.dateLocaleOrder.checked,
+    parts: visible.map((row) => row.type),
+    separators: visible.slice(0, -1).map((row) => row.separator),
+    weekdayStyle: form.weekdayStyle.value,
+    monthStyle: form.monthStyle.value
+  };
+}
+
+function setDateFormatFields(dateFormat) {
+  const form = document.getElementById("configurator-form");
+  form.dateLocaleOrder.checked = dateFormat.locale;
+  form.weekdayStyle.value = dateFormat.weekdayStyle;
+  form.monthStyle.value = dateFormat.monthStyle;
+  renderedLocaleOrder = dateFormat.locale;
+  dateRows.length = 0;
+  dateFormat.parts.forEach((type, i) => {
+    dateRows.push({ type, visible: true, separator: dateFormat.separators[i] === undefined ? " " : dateFormat.separators[i] });
+  });
+  Object.keys(DATE_PART_LABELS).forEach((type) => {
+    if (dateFormat.parts.indexOf(type) === -1) {
+      dateRows.push({ type, visible: false, separator: " " });
+    }
+  });
+  renderDateRows();
+}
+
+function renderDateRows() {
+  const form = document.getElementById("configurator-form");
+  const list = document.getElementById("date-parts-list");
+  const localeOrder = form.dateLocaleOrder.checked;
+  const lastVisible = dateRows.map((row) => row.visible).lastIndexOf(true);
+  list.textContent = "";
+  dateRows.forEach((row, i) => {
+    const item = document.createElement("li");
+
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.checked = row.visible;
+    // In the language's own order only the weekday can be switched off.
+    check.disabled = localeOrder && row.type !== "weekday";
+    check.setAttribute("aria-label", "Show " + DATE_PART_LABELS[row.type].toLowerCase());
+    check.addEventListener("change", (event) => {
+      event.stopPropagation();
+      row.visible = check.checked;
+      renderDateRows();
+      refreshPreview();
+    });
+    item.appendChild(check);
+
+    const name = document.createElement("span");
+    name.className = "part-name";
+    name.textContent = DATE_PART_LABELS[row.type];
+    item.appendChild(name);
+
+    [["\u25B2", -1, "Move up"], ["\u25BC", 1, "Move down"]].forEach(([symbol, delta, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = symbol;
+      button.setAttribute("aria-label", label + " " + DATE_PART_LABELS[row.type].toLowerCase());
+      button.disabled = localeOrder || i + delta < 0 || i + delta >= dateRows.length;
+      button.addEventListener("click", () => {
+        dateRows.splice(i + delta, 0, dateRows.splice(i, 1)[0]);
+        renderDateRows();
+        refreshPreview();
+      });
+      item.appendChild(button);
+    });
+
+    if (row.visible && i < lastVisible) {
+      const sep = document.createElement("input");
+      sep.type = "text";
+      sep.value = row.separator;
+      sep.disabled = localeOrder;
+      sep.setAttribute("aria-label", "Text after " + DATE_PART_LABELS[row.type].toLowerCase());
+      sep.addEventListener("input", () => {
+        row.separator = sep.value;
+      });
+      item.appendChild(sep);
+    }
+    list.appendChild(item);
+  });
 }
 
 function applyConfigToForm(config) {
@@ -65,8 +155,7 @@ function applyConfigToForm(config) {
   form.textScale.value = String(config.textScale);
   form.hour12.value = config.hour12 === null ? "" : String(config.hour12);
   form.showSeconds.checked = config.showSeconds;
-  form.showWeekday.checked = config.showWeekday;
-  form.dateOrder.value = config.dateOrder === null ? "" : config.dateOrder;
+  setDateFormatFields(normalizeDateFormat(config));
   updateModeVisibility();
   refreshPreview();
 }
@@ -76,6 +165,18 @@ function updateModeVisibility() {
   const isTime = form.mode.value === "time";
   document.getElementById("time-only-fields").hidden = !isTime;
   document.getElementById("date-only-fields").hidden = isTime;
+  renderDateRowsIfLocaleChanged();
+}
+
+// The rows' enabled state depends on the locale-order checkbox; re-render only
+// when it changes so typing in a separator box isn't interrupted.
+let renderedLocaleOrder = null;
+function renderDateRowsIfLocaleChanged() {
+  const form = document.getElementById("configurator-form");
+  if (form.dateLocaleOrder.checked !== renderedLocaleOrder) {
+    renderedLocaleOrder = form.dateLocaleOrder.checked;
+    renderDateRows();
+  }
 }
 
 // Selects the dropdown option matching `language` if one exists, otherwise
@@ -350,7 +451,13 @@ async function handleImportFile(file) {
     setBackgroundFile(null);
     document.getElementById("backgroundFile").value = "";
 
-    applyConfigToForm({ ...DEFAULT_CONFIG, ...config });
+    const merged = { ...DEFAULT_CONFIG, ...config };
+    if (!config.dateFormat) {
+      // An older file: let its showWeekday/dateOrder be converted rather than
+      // being masked by the default dateFormat.
+      delete merged.dateFormat;
+    }
+    applyConfigToForm(merged);
 
     restoreAssetFromImport(config.fontUrl, zipEntries, setFontFile, document.getElementById("fontFile"));
     restoreAssetFromImport(config.backgroundImageUrl, zipEntries, setBackgroundFile, document.getElementById("backgroundFile"));

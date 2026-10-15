@@ -4,7 +4,7 @@ const {
   buildIntlOptions,
   toIntlTimeZone,
   readPlayerTimeZone,
-  reorderDateParts,
+  normalizeDateFormat,
   formatClockString,
   applyRotation,
   applyBackgroundImage,
@@ -40,11 +40,84 @@ test("buildIntlOptions: date mode includes weekday only when requested", () => {
   );
 });
 
-test("reorderDateParts: DMY with weekday prefixes the weekday", () => {
-  const parts = new Intl.DateTimeFormat("en", {
-    year: "numeric", month: "long", day: "numeric", weekday: "long"
-  }).formatToParts(FIXED_DATE);
-  assert.equal(reorderDateParts(parts, "DMY"), "Saturday, 12/September/2026");
+test("buildIntlOptions: date mode honours short weekday and month styles", () => {
+  const config = {
+    mode: "date",
+    dateFormat: { locale: true, parts: ["weekday", "month", "day", "year"], separators: [], weekdayStyle: "short", monthStyle: "short" }
+  };
+  assert.deepEqual(
+    buildIntlOptions(config),
+    { year: "numeric", month: "short", day: "numeric", weekday: "short" }
+  );
+});
+
+test("normalizeDateFormat: defaults to locale order with weekday, long names", () => {
+  assert.deepEqual(normalizeDateFormat({}), {
+    locale: true,
+    parts: ["weekday", "month", "day", "year"],
+    separators: [", ", " ", ", "],
+    weekdayStyle: "long",
+    monthStyle: "long"
+  });
+});
+
+test("normalizeDateFormat: migrates legacy showWeekday/dateOrder settings", () => {
+  const migrated = normalizeDateFormat({ showWeekday: true, dateOrder: "DMY" });
+  assert.equal(migrated.locale, false);
+  assert.deepEqual(migrated.parts, ["weekday", "day", "month", "year"]);
+  assert.deepEqual(migrated.separators, [", ", "/", "/"]);
+  const noWeekday = normalizeDateFormat({ showWeekday: false, dateOrder: null });
+  assert.equal(noWeekday.locale, true);
+  assert.deepEqual(noWeekday.parts, ["month", "day", "year"]);
+});
+
+test("normalizeDateFormat: fills missing separators and styles on a partial dateFormat", () => {
+  const result = normalizeDateFormat({ dateFormat: { locale: false, parts: ["day", "month", "year"] } });
+  assert.deepEqual(result.separators, [" ", " "]);
+  assert.equal(result.weekdayStyle, "long");
+  assert.equal(result.monthStyle, "long");
+});
+
+const dateConfig = (dateFormat) => ({ mode: "date", language: "en", dateFormat });
+
+test("formatClockString: date, short weekday and month, locale order", () => {
+  const result = formatClockString(
+    dateConfig({ locale: true, parts: ["weekday", "month", "day", "year"], weekdayStyle: "short", monthStyle: "short" }),
+    FIXED_DATE
+  );
+  assert.equal(result, "Sat, Sep 12, 2026");
+});
+
+test("formatClockString: date, mixed styles (short weekday, long month)", () => {
+  const result = formatClockString(
+    dateConfig({ locale: true, parts: ["weekday", "month", "day", "year"], weekdayStyle: "short", monthStyle: "long" }),
+    FIXED_DATE
+  );
+  assert.equal(result, "Sat, September 12, 2026");
+});
+
+test("formatClockString: date, custom order with weekday last", () => {
+  const result = formatClockString(
+    dateConfig({ locale: false, parts: ["month", "day", "year", "weekday"], separators: [" ", ", ", " "] }),
+    FIXED_DATE
+  );
+  assert.equal(result, "September 12, 2026 Saturday");
+});
+
+test("formatClockString: date, per-gap separators of any text", () => {
+  const result = formatClockString(
+    dateConfig({ locale: false, parts: ["day", "month", "year"], separators: ["-", " | "], monthStyle: "short" }),
+    FIXED_DATE
+  );
+  assert.equal(result, "12-Sep | 2026");
+});
+
+test("formatClockString: date, hidden parts are omitted", () => {
+  const result = formatClockString(
+    dateConfig({ locale: false, parts: ["month", "day"], separators: [" "] }),
+    FIXED_DATE
+  );
+  assert.equal(result, "September 12");
 });
 
 test("formatClockString: time, en, 12-hour with seconds", () => {

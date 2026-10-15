@@ -21,6 +21,12 @@
   }
   #zoneSizeNote { color: #666; font-size: 0.9em; margin: 4px 0 0; }
   #error-banner { background: #fdd; color: #900; padding: 8px 12px; margin-bottom: 12px; }
+  #date-parts-list { list-style: none; margin: 0; padding: 0; }
+  #date-parts-list li { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  #date-parts-list .part-name { min-width: 64px; }
+  #date-parts-list input[type=text] { width: 4em; }
+  #date-parts-editor .hint { color: #666; font-size: 0.9em; margin: 4px 0; }
+  #date-parts-editor[hidden] { display: none; }
   #error-banner[hidden] { display: none; }
 </style>
 </head>
@@ -107,15 +113,23 @@
           <label><input type="checkbox" name="showSeconds"> Show seconds</label>
         </div>
         <div id="date-only-fields">
-          <label><input type="checkbox" name="showWeekday"> Show weekday</label>
-          <label>Date order
-            <select name="dateOrder">
-              <option value="">Locale default</option>
-              <option value="MDY">MDY</option>
-              <option value="DMY">DMY</option>
-              <option value="YMD">YMD</option>
+          <label><input type="checkbox" name="dateLocaleOrder"> Use the language's own date order</label>
+          <label>Weekday names
+            <select name="weekdayStyle">
+              <option value="long">Long (Wednesday)</option>
+              <option value="short">Short (Wed)</option>
             </select>
           </label>
+          <label>Month names
+            <select name="monthStyle">
+              <option value="long">Long (October)</option>
+              <option value="short">Short (Oct)</option>
+            </select>
+          </label>
+          <div id="date-parts-editor">
+            <p class="hint">Tick the parts to show, reorder them with the arrows, and type the text that goes after each part.</p>
+            <ul id="date-parts-list"></ul>
+          </div>
         </div>
       </fieldset>
 
