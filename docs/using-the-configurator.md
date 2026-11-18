@@ -73,6 +73,20 @@ This section controls where the clock sits and how big the text is.
   that many locales, including UK English, default to 24-hour - this isn't
   a bug, pick "12-hour" explicitly if you want AM/PM regardless of locale).
 - **Show seconds** (Time mode).
+- **Remove leading zero** (Time mode, 12-hour clocks only) - shows "9:30"
+  instead of "09:30". The clock is sized for a two-digit hour, so it
+  doesn't grow or overflow when the time reaches 10:00. 24-hour clocks
+  always keep the leading zero, and these options are hidden when you pick
+  "24-hour".
+- **Show AM/PM as superscript** (Time mode, 12-hour clocks only) - shows
+  AM/PM small and raised beside the time, like "11:35 ᴬᴹ". Two extra
+  settings appear when it's ticked:
+  - **AM/PM size** - Small, Medium or Large, relative to the digits.
+  - **AM/PM height** - Top lines it up with the top of the digits; Middle
+    centres it beside them.
+
+  In languages that put AM/PM before the time (e.g. Japanese, Korean) it
+  stays in front, raised the same way.
 - **Weekday names / Month names** (Date mode) - long ("Wednesday",
   "October") or short ("Wed", "Oct"). Each is set separately, so
   "Wed, October 14" is possible. Short names come from the language's own

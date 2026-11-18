@@ -26,6 +26,9 @@
   #date-parts-list .part-name { min-width: 64px; }
   #date-parts-list input[type=text] { width: 4em; }
   #date-parts-editor .hint { color: #666; font-size: 0.9em; margin: 4px 0; }
+  #twelve-hour-fields .hint { color: #666; font-size: 0.9em; margin: 8px 0 0; }
+  #day-period-options { margin-left: 24px; }
+  #twelve-hour-fields[hidden], #day-period-options[hidden] { display: none; }
   #date-parts-editor[hidden] { display: none; }
   #error-banner[hidden] { display: none; }
 </style>
@@ -111,6 +114,26 @@
             </select>
           </label>
           <label><input type="checkbox" name="showSeconds"> Show seconds</label>
+          <div id="twelve-hour-fields">
+            <p class="hint">12-hour clocks only.</p>
+            <label><input type="checkbox" name="removeLeadingZero"> Remove leading zero (9:30 instead of 09:30)</label>
+            <label><input type="checkbox" name="dayPeriodSuperscript"> Show AM/PM as superscript</label>
+            <div id="day-period-options">
+              <label>AM/PM size
+                <select name="dayPeriodSize">
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+              </label>
+              <label>AM/PM height
+                <select name="dayPeriodPosition">
+                  <option value="top">Top</option>
+                  <option value="middle">Middle</option>
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
         <div id="date-only-fields">
           <label><input type="checkbox" name="dateLocaleOrder"> Use the language's own date order</label>
