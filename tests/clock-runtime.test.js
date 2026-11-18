@@ -7,6 +7,9 @@ const {
   readPlayerTimeZone,
   normalizeDateFormat,
   formatClockString,
+  formatClockSegments,
+  normalizeDayPeriodStyle,
+  dayPeriodCss,
   applyRotation,
   applyBackgroundImage,
   applySafeTextRegion,
@@ -522,4 +525,70 @@ test("formatClockString: hourLeadingZero false keeps the zero on a 24-hour clock
 test("formatClockString: hourLeadingZero missing keeps today's 2-digit hour", () => {
   const morning = new Date(2026, 8, 12, 9, 5, 0);
   assert.match(formatClockString({ mode: "time", language: "en", hour12: true, showSeconds: false }, morning), /^09:05\s*AM$/);
+});
+
+function fakeTextEl() {
+  const el = { style: {}, childNodes: [] };
+  el.ownerDocument = {
+    createElement: (tag) => ({ tagName: tag.toUpperCase(), style: {}, textContent: "" }),
+    createTextNode: (text) => ({ textContent: text })
+  };
+  el.appendChild = (n) => el.childNodes.push(n);
+  Object.defineProperty(el, "textContent", {
+    get: () => el.childNodes.map((n) => n.textContent).join(""),
+    set: (v) => { el.childNodes = v ? [{ textContent: v }] : []; }
+  });
+  return el;
+}
+
+test("normalizeDayPeriodStyle: defaults for missing or partial settings", () => {
+  assert.deepEqual(normalizeDayPeriodStyle({}), { superscript: false, size: "medium", position: "top" });
+  assert.deepEqual(normalizeDayPeriodStyle({ dayPeriodStyle: { superscript: true, size: "huge" } }),
+    { superscript: true, size: "medium", position: "top" });
+});
+
+test("formatClockSegments: en splits off PM and drops the space before it", () => {
+  assert.deepEqual(
+    formatClockSegments({ mode: "time", language: "en", hour12: true, showSeconds: false, hourLeadingZero: false }, FIXED_DATE),
+    [{ text: "2:06", dayPeriod: false }, { text: "PM", dayPeriod: true }]);
+});
+
+test("formatClockSegments: ko puts AM/PM first and drops the space after it", () => {
+  assert.deepEqual(
+    formatClockSegments({ mode: "time", language: "ko", hour12: true, showSeconds: false, hourLeadingZero: false }, FIXED_DATE),
+    [{ text: "오후", dayPeriod: true }, { text: "2:06", dayPeriod: false }]);
+});
+
+test("formatClockSegments: applies a fixed UTC offset like formatClockString", () => {
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, timeZone: "+10:30" };
+  const joined = formatClockSegments(config, FIXED_DATE).map((s) => s.text).join(" ");
+  assert.equal(joined.replace(/\s+/g, " "), formatClockString(config, FIXED_DATE).replace(/\s+/g, " "));
+});
+
+test("dayPeriodCss: size presets and a higher raise for top than middle", () => {
+  assert.equal(dayPeriodCss({ size: "small", position: "top" }).fontSize, "0.35em");
+  assert.equal(dayPeriodCss({ size: "medium", position: "top" }).fontSize, "0.45em");
+  assert.equal(dayPeriodCss({ size: "large", position: "top" }).fontSize, "0.55em");
+  const top = parseFloat(dayPeriodCss({ size: "medium", position: "top" }).verticalAlign);
+  const middle = parseFloat(dayPeriodCss({ size: "medium", position: "middle" }).verticalAlign);
+  assert.ok(top > middle && middle > 0);
+});
+
+test("render: superscript wraps AM/PM in a styled span", () => {
+  const textEl = fakeTextEl();
+  render({ mode: "time", language: "en", hour12: true, showSeconds: false,
+    dayPeriodStyle: { superscript: true, size: "small", position: "top" } }, textEl, FIXED_DATE);
+  assert.equal(textEl.childNodes.length, 2);
+  assert.equal(textEl.childNodes[0].textContent, "02:06");
+  assert.equal(textEl.childNodes[1].tagName, "SPAN");
+  assert.equal(textEl.childNodes[1].textContent, "PM");
+  assert.equal(textEl.childNodes[1].style.fontSize, "0.35em");
+});
+
+test("render: superscript on a 24-hour clock is plain text", () => {
+  const textEl = fakeTextEl();
+  render({ mode: "time", language: "en", hour12: false, showSeconds: false,
+    dayPeriodStyle: { superscript: true } }, textEl, FIXED_DATE);
+  assert.equal(textEl.textContent, "14:06");
+  assert.equal(textEl.childNodes.length, 1);
 });

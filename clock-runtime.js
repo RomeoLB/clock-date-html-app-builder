@@ -112,12 +112,16 @@ function joinDateParts(intlParts, dateFormat) {
   return result;
 }
 
-function formatClockString(config, now) {
+// Fixed offsets are formatted as UTC (see buildIntlOptions), so the Date is
+// shifted by the offset first.
+function shiftForFixedOffset(config, now) {
   now = now || new Date();
   const offset = fixedOffsetMinutes(config.timeZone);
-  if (offset !== null) {
-    now = new Date(now.getTime() + offset * 60000);
-  }
+  return offset === null ? now : new Date(now.getTime() + offset * 60000);
+}
+
+function formatClockString(config, now) {
+  now = shiftForFixedOffset(config, now);
   const options = buildIntlOptions(config);
   const formatter = new Intl.DateTimeFormat(config.language, options);
 
@@ -129,6 +133,60 @@ function formatClockString(config, now) {
   }
 
   return formatter.format(now);
+}
+
+const DAY_PERIOD_SIZES = { small: 0.35, medium: 0.45, large: 0.55 };
+const DAY_PERIOD_POSITIONS = ["top", "middle"];
+
+// Returns complete AM/PM superscript settings, filling anything missing or
+// unrecognised (e.g. from a file made before this setting existed).
+function normalizeDayPeriodStyle(config) {
+  const given = config.dayPeriodStyle || {};
+  return {
+    superscript: given.superscript === true,
+    size: Object.prototype.hasOwnProperty.call(DAY_PERIOD_SIZES, given.size) ? given.size : "medium",
+    position: DAY_PERIOD_POSITIONS.indexOf(given.position) !== -1 ? given.position : "top"
+  };
+}
+
+// Splits a time into runs of plain text and the AM/PM piece, wherever the
+// language puts it (ko/ja put it first). The space between the time and AM/PM
+// is dropped so the superscript sits snugly against the digits.
+function formatClockSegments(config, now) {
+  now = shiftForFixedOffset(config, now);
+  const parts = new Intl.DateTimeFormat(config.language, buildIntlOptions(config)).formatToParts(now);
+  const segments = [];
+  parts.forEach(function (part, i) {
+    const isGap = part.type === "literal" && /^\s+$/.test(part.value);
+    const touchesDayPeriod = (parts[i - 1] && parts[i - 1].type === "dayPeriod") ||
+      (parts[i + 1] && parts[i + 1].type === "dayPeriod");
+    if (isGap && touchesDayPeriod) {
+      return;
+    }
+    const isDayPeriod = part.type === "dayPeriod";
+    const last = segments[segments.length - 1];
+    if (last && !last.dayPeriod && !isDayPeriod) {
+      last.text += part.value;
+    } else {
+      segments.push({ text: part.value, dayPeriod: isDayPeriod });
+    }
+  });
+  return segments;
+}
+
+// Typical height of digits as a fraction of the font size; used to line the
+// raised AM/PM up with the top (or middle) of the digits across most fonts.
+const DIGIT_HEIGHT_RATIO = 0.7;
+
+// Inline styles for the AM/PM span. vertical-align lengths resolve against
+// the span's own (smaller) font size, hence the division by the size.
+function dayPeriodCss(dayPeriodStyle) {
+  const size = DAY_PERIOD_SIZES[dayPeriodStyle.size] || DAY_PERIOD_SIZES.medium;
+  let raise = DIGIT_HEIGHT_RATIO * (1 - size) / size;
+  if (dayPeriodStyle.position === "middle") {
+    raise = raise / 2;
+  }
+  return { fontSize: size + "em", verticalAlign: (Math.round(raise * 1000) / 1000) + "em" };
 }
 
 function applyRotation(config, container) {
@@ -216,7 +274,37 @@ function applyFont(config, textEl, doc, fontUrl, onFontError, onFontLoaded) {
 }
 
 function render(config, textEl, now) {
+  if (config.mode === "time" && normalizeDayPeriodStyle(config).superscript) {
+    const segments = formatClockSegments(config, now);
+    if (segments.some(function (seg) { return seg.dayPeriod; })) {
+      renderSegments(config, textEl, segments);
+      return;
+    }
+  }
   textEl.textContent = formatClockString(config, now);
+}
+
+function renderSegments(config, textEl, segments) {
+  const doc = textEl.ownerDocument;
+  const css = dayPeriodCss(normalizeDayPeriodStyle(config));
+  textEl.textContent = "";
+  segments.forEach(function (seg, i) {
+    if (!seg.dayPeriod) {
+      textEl.appendChild(doc.createTextNode(seg.text));
+      return;
+    }
+    const span = doc.createElement("span");
+    span.textContent = seg.text;
+    span.style.fontSize = css.fontSize;
+    span.style.verticalAlign = css.verticalAlign;
+    // A small gap on the side facing the digits.
+    if (i === 0) {
+      span.style.marginRight = "0.3em";
+    } else {
+      span.style.marginLeft = "0.3em";
+    }
+    textEl.appendChild(span);
+  });
 }
 
 // Returns the font size (in the same unit as baseFontSize) that makes a box of
@@ -438,6 +526,9 @@ if (typeof module !== "undefined" && module.exports) {
     readPlayerTimeZone,
     normalizeDateFormat,
     formatClockString,
+    formatClockSegments,
+    normalizeDayPeriodStyle,
+    dayPeriodCss,
     applyRotation,
     applyBackgroundImage,
     applySafeTextRegion,
