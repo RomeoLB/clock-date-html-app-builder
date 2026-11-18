@@ -11,6 +11,7 @@ const DEFAULT_CONFIG = {
   safeTextRegion: { x: 0, y: 0, width: 100, height: 100 },
   textScale: 100,
   hour12: null,
+  hourLeadingZero: true,
   showSeconds: true,
   dateFormat: {
     locale: true,
@@ -37,6 +38,8 @@ const SCHEMA_DOC_COMMENT = [
   " * textScale: 10-100 - percentage of the auto-fit size to actually use; shrink below 100 if a",
   " *   particular font's glyphs run close to the safeTextRegion edges.",
   " * hour12: true = force 12-hour, false = force 24-hour, null = use the language's default.",
+  " * hourLeadingZero: false = drop the hour's leading zero (\"9:30\") on 12-hour clocks; 24-hour",
+  " *   clocks always keep it.",
   " * showSeconds: mode:\"time\" only.",
   " * dateFormat: mode:\"date\" only.",
   " *   parts: which of \"weekday\", \"month\", \"day\", \"year\" to show, in display order.",

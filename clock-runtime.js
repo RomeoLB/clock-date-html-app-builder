@@ -11,9 +11,23 @@ function fixedOffsetMinutes(zone) {
   return (m[1] === "-" ? -1 : 1) * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
 }
 
+// True when the clock will show a 12-hour time (with AM/PM): either forced by
+// hour12, or because the language's own default is 12-hour (e.g. en-US).
+function usesTwelveHourClock(config) {
+  const options = { hour: "numeric" };
+  if (config.hour12 !== null && config.hour12 !== undefined) {
+    options.hour12 = config.hour12;
+  }
+  const hourCycle = new Intl.DateTimeFormat(config.language, options).resolvedOptions().hourCycle;
+  return hourCycle === "h11" || hourCycle === "h12";
+}
+
 function buildIntlOptions(config) {
   if (config.mode === "time") {
-    const options = { hour: "2-digit", minute: "2-digit" };
+    // Only 12-hour clocks drop the leading zero: Intl's "numeric" hour also
+    // drops it on some 24-hour locales (en-GB gives "9:05"), which is unwanted.
+    const dropZero = config.hourLeadingZero === false && usesTwelveHourClock(config);
+    const options = { hour: dropZero ? "numeric" : "2-digit", minute: "2-digit" };
     if (config.showSeconds) {
       options.second = "2-digit";
     }
@@ -419,6 +433,7 @@ function bootClock(config, overrides) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildIntlOptions,
+    usesTwelveHourClock,
     toIntlTimeZone,
     readPlayerTimeZone,
     normalizeDateFormat,

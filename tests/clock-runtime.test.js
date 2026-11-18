@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   buildIntlOptions,
+  usesTwelveHourClock,
   toIntlTimeZone,
   readPlayerTimeZone,
   normalizeDateFormat,
@@ -494,4 +495,31 @@ test("readPlayerTimeZone: falls back to null without the module or on failure", 
   assert.equal(await readPlayerTimeZone(() => { throw new Error("no module"); }), null);
   const rejecting = () => class { getTimeZone() { return Promise.reject(new Error("boom")); } };
   assert.equal(await readPlayerTimeZone(rejecting), null);
+});
+
+test("usesTwelveHourClock: honours forced hour12 and the language default", () => {
+  assert.equal(usesTwelveHourClock({ language: "en-GB", hour12: true }), true);
+  assert.equal(usesTwelveHourClock({ language: "en-US", hour12: false }), false);
+  assert.equal(usesTwelveHourClock({ language: "en-US", hour12: null }), true);
+  assert.equal(usesTwelveHourClock({ language: "en-GB", hour12: null }), false);
+});
+
+test("formatClockString: hourLeadingZero false drops the zero on a 12-hour clock", () => {
+  const morning = new Date(2026, 8, 12, 9, 5, 0);
+  const result = formatClockString(
+    { mode: "time", language: "en", hour12: true, showSeconds: false, hourLeadingZero: false }, morning);
+  assert.match(result, /^9:05\s*AM$/);
+});
+
+test("formatClockString: hourLeadingZero false keeps the zero on a 24-hour clock", () => {
+  const morning = new Date(2026, 8, 12, 9, 5, 0);
+  assert.equal(formatClockString(
+    { mode: "time", language: "en-GB", hour12: null, showSeconds: false, hourLeadingZero: false }, morning), "09:05");
+  assert.equal(formatClockString(
+    { mode: "time", language: "en", hour12: false, showSeconds: false, hourLeadingZero: false }, morning), "09:05");
+});
+
+test("formatClockString: hourLeadingZero missing keeps today's 2-digit hour", () => {
+  const morning = new Date(2026, 8, 12, 9, 5, 0);
+  assert.match(formatClockString({ mode: "time", language: "en", hour12: true, showSeconds: false }, morning), /^09:05\s*AM$/);
 });
