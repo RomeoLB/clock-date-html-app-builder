@@ -349,8 +349,9 @@ function fitTextToContainer(container, textEl, textScalePercent) {
   return scaled;
 }
 
-// 10 AM and 10 PM: a two-digit hour, in both halves of the day.
-const SIZING_SAMPLE_HOURS = [10, 22];
+// A two-digit hour ("10") and an hour without a "1" ("08" - many fonts draw
+// "1" narrower than other digits), each in both halves of the day.
+const SIZING_SAMPLE_HOURS = [8, 10, 20, 22];
 
 // Sizes the clock once for the widest it will get, then shows the real time.
 // A time is measured at two sample times rather than "now": without a leading

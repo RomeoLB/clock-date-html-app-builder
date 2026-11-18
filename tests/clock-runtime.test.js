@@ -596,12 +596,14 @@ test("render: superscript on a 24-hour clock is plain text", () => {
 
 // A 1000x300 container; the text measures 50px wide per character at a 100px
 // font size (plus `extraForPm` characters when it contains "PM").
-function fakeFitElements(extraForPm) {
+function fakeFitElements(extraForPm, narrowOne) {
   const container = { getBoundingClientRect: () => ({ width: 1000, height: 300 }) };
   const textEl = fakeTextEl();
   textEl.getBoundingClientRect = () => {
     const px = parseFloat(textEl.style.fontSize);
-    const chars = textEl.textContent.length + (/PM/.test(textEl.textContent) ? (extraForPm || 0) : 0);
+    const text = textEl.textContent;
+    const ones = narrowOne ? (text.match(/1/g) || []).length / 2 : 0;
+    const chars = text.length - ones + (/PM/.test(text) ? (extraForPm || 0) : 0);
     return { width: chars * px / 2, height: px };
   };
   return { container, textEl };
@@ -632,4 +634,12 @@ test("fitClockToContainer: date mode fits the current text", () => {
   fitClockToContainer(container, textEl, config, FIXED_DATE);
   const width = textEl.textContent.length * 50;
   assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, width, 100, 100, 0.92));
+});
+
+test("fitClockToContainer: a narrow '1' (proportional digits) doesn't undersize an 08:xx hour", () => {
+  const { container, textEl } = fakeFitElements(0, true);
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, textScale: 100 };
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 8, 47, 0));
+  // "08:00 AM" has no "1": 8 characters * 50 = 400px wide at 100px.
+  assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, 400, 100, 100, 0.92));
 });
