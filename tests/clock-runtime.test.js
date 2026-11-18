@@ -17,7 +17,8 @@ const {
   applyFont,
   render,
   computeFitFontSize,
-  resolveTextScale
+  resolveTextScale,
+  fitClockToContainer
 } = require("../clock-runtime.js");
 
 const FIXED_DATE = new Date(2026, 8, 12, 14, 6, 53); // Saturday, September 12, 2026, 14:06:53
@@ -591,4 +592,44 @@ test("render: superscript on a 24-hour clock is plain text", () => {
     dayPeriodStyle: { superscript: true } }, textEl, FIXED_DATE);
   assert.equal(textEl.textContent, "14:06");
   assert.equal(textEl.childNodes.length, 1);
+});
+
+// A 1000x300 container; the text measures 50px wide per character at a 100px
+// font size (plus `extraForPm` characters when it contains "PM").
+function fakeFitElements(extraForPm) {
+  const container = { getBoundingClientRect: () => ({ width: 1000, height: 300 }) };
+  const textEl = fakeTextEl();
+  textEl.getBoundingClientRect = () => {
+    const px = parseFloat(textEl.style.fontSize);
+    const chars = textEl.textContent.length + (/PM/.test(textEl.textContent) ? (extraForPm || 0) : 0);
+    return { width: chars * px / 2, height: px };
+  };
+  return { container, textEl };
+}
+
+test("fitClockToContainer: sizes for a two-digit hour even when started at 9 o'clock", () => {
+  const { container, textEl } = fakeFitElements();
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, hourLeadingZero: false, textScale: 100 };
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 9, 5, 0));
+  const nine = parseFloat(textEl.style.fontSize);
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 10, 5, 0));
+  assert.equal(parseFloat(textEl.style.fontSize), nine);
+  assert.match(textEl.textContent, /^10:05/);
+});
+
+test("fitClockToContainer: uses the wider of the AM and PM samples", () => {
+  const { container, textEl } = fakeFitElements(4);
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, textScale: 100 };
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 9, 5, 0));
+  // "10:00 PM" is 8 characters, plus 4 for PM, so 12 * 50 = 600px wide at 100px.
+  assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, 600, 100, 100, 0.92));
+  assert.match(textEl.textContent, /AM$/);
+});
+
+test("fitClockToContainer: date mode fits the current text", () => {
+  const { container, textEl } = fakeFitElements();
+  const config = { mode: "date", language: "en", textScale: 100 };
+  fitClockToContainer(container, textEl, config, FIXED_DATE);
+  const width = textEl.textContent.length * 50;
+  assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, width, 100, 100, 0.92));
 });

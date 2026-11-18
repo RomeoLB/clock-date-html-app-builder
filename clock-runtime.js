@@ -344,7 +344,32 @@ function fitTextToContainer(container, textEl, textScalePercent) {
     FIT_BASE_FONT_SIZE,
     FIT_FILL_RATIO
   );
-  textEl.style.fontSize = (fontSize * resolveTextScale(textScalePercent)) + "px";
+  const scaled = fontSize * resolveTextScale(textScalePercent);
+  textEl.style.fontSize = scaled + "px";
+  return scaled;
+}
+
+// 10 AM and 10 PM: a two-digit hour, in both halves of the day.
+const SIZING_SAMPLE_HOURS = [10, 22];
+
+// Sizes the clock once for the widest it will get, then shows the real time.
+// A time is measured at two sample times rather than "now": without a leading
+// zero the hour gains a digit at 10:00, and AM/PM can differ in width, so
+// sizing to the current time could overflow later in the day. Date mode fits
+// the current text, as before.
+function fitClockToContainer(container, textEl, config, now) {
+  if (config.mode !== "time") {
+    render(config, textEl, now);
+    fitTextToContainer(container, textEl, config.textScale);
+    return;
+  }
+  const sampleConfig = Object.assign({}, config, { timeZone: null });
+  const sizes = SIZING_SAMPLE_HOURS.map(function (hour) {
+    render(sampleConfig, textEl, new Date(2000, 0, 1, hour, 0, 0));
+    return fitTextToContainer(container, textEl, config.textScale);
+  });
+  textEl.style.fontSize = Math.min.apply(null, sizes) + "px";
+  render(config, textEl, now);
 }
 
 // An HTML widget's own Intl/Date report UTC on a BrightSign player, so the
@@ -483,23 +508,22 @@ function bootClock(config, overrides) {
   applySafeTextRegion(config, container);
   applyColors(config, document.body, textEl);
 
-  // Sized once (below), not on every tick: with tabular-nums digit widths are
-  // stable, so continuously re-fitting every second only produced visible
-  // jitter as the exact rendered string varied (e.g. AM/PM, weekday length)
-  // with no benefit. Re-fit once more if the custom font finishes loading
-  // after this point, since its real metrics may differ from the fallback
-  // used for the very first measurement.
-  function refit() {
-    fitTextToContainer(container, textEl, config.textScale);
-  }
-
-  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
-
   // Formatting uses its own copy so the player's zone, once read, can be
   // layered on without altering the caller's config.
   const displayConfig = Object.assign({}, config);
 
-  render(displayConfig, textEl);
+  // Sized once (below), not on every tick: continuously re-fitting every
+  // second only produced visible jitter as the rendered string varied.
+  // fitClockToContainer sizes a time for its widest moment (a two-digit hour,
+  // AM or PM) so it never overflows later. Re-fit once more if the custom font
+  // finishes loading after this point, since its real metrics may differ from
+  // the fallback used for the very first measurement.
+  function refit() {
+    fitClockToContainer(container, textEl, displayConfig);
+  }
+
+  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
+
   refit();
 
   const readZone = overrides.readTimeZone || function () {
@@ -508,7 +532,6 @@ function bootClock(config, overrides) {
   readZone().then(function (zone) {
     if (zone) {
       displayConfig.timeZone = zone;
-      render(displayConfig, textEl);
       refit();
     }
   });
@@ -538,6 +561,7 @@ if (typeof module !== "undefined" && module.exports) {
     computeFitFontSize,
     resolveTextScale,
     fitTextToContainer,
+    fitClockToContainer,
     bootClock
   };
 }
