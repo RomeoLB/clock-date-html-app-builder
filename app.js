@@ -39,6 +39,12 @@ function readFormConfig() {
     textScale: Number(form.textScale.value) || 100,
     hour12: form.hour12.value === "" ? null : form.hour12.value === "true",
     showSeconds: form.showSeconds.checked,
+    hourLeadingZero: !form.removeLeadingZero.checked,
+    dayPeriodStyle: {
+      superscript: form.dayPeriodSuperscript.checked,
+      size: form.dayPeriodSize.value,
+      position: form.dayPeriodPosition.value
+    },
     dateFormat: readDateFormat(form)
   };
 }
@@ -155,6 +161,11 @@ function applyConfigToForm(config) {
   form.textScale.value = String(config.textScale);
   form.hour12.value = config.hour12 === null ? "" : String(config.hour12);
   form.showSeconds.checked = config.showSeconds;
+  form.removeLeadingZero.checked = config.hourLeadingZero === false;
+  const dayPeriodStyle = normalizeDayPeriodStyle(config);
+  form.dayPeriodSuperscript.checked = dayPeriodStyle.superscript;
+  form.dayPeriodSize.value = dayPeriodStyle.size;
+  form.dayPeriodPosition.value = dayPeriodStyle.position;
   setDateFormatFields(normalizeDateFormat(config));
   updateModeVisibility();
   refreshPreview();
@@ -165,6 +176,10 @@ function updateModeVisibility() {
   const isTime = form.mode.value === "time";
   document.getElementById("time-only-fields").hidden = !isTime;
   document.getElementById("date-only-fields").hidden = isTime;
+  // The 12-hour options only do anything on a 12-hour clock, so they're hidden
+  // when 24-hour is forced; size/height only matter when superscript is on.
+  document.getElementById("twelve-hour-fields").hidden = form.hour12.value === "false";
+  document.getElementById("day-period-options").hidden = !form.dayPeriodSuperscript.checked;
   renderDateRowsIfLocaleChanged();
 }
 

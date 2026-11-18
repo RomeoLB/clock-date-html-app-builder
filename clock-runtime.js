@@ -11,9 +11,23 @@ function fixedOffsetMinutes(zone) {
   return (m[1] === "-" ? -1 : 1) * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
 }
 
+// True when the clock will show a 12-hour time (with AM/PM): either forced by
+// hour12, or because the language's own default is 12-hour (e.g. en-US).
+function usesTwelveHourClock(config) {
+  const options = { hour: "numeric" };
+  if (config.hour12 !== null && config.hour12 !== undefined) {
+    options.hour12 = config.hour12;
+  }
+  const hourCycle = new Intl.DateTimeFormat(config.language, options).resolvedOptions().hourCycle;
+  return hourCycle === "h11" || hourCycle === "h12";
+}
+
 function buildIntlOptions(config) {
   if (config.mode === "time") {
-    const options = { hour: "2-digit", minute: "2-digit" };
+    // Only 12-hour clocks drop the leading zero: Intl's "numeric" hour also
+    // drops it on some 24-hour locales (en-GB gives "9:05"), which is unwanted.
+    const dropZero = config.hourLeadingZero === false && usesTwelveHourClock(config);
+    const options = { hour: dropZero ? "numeric" : "2-digit", minute: "2-digit" };
     if (config.showSeconds) {
       options.second = "2-digit";
     }
@@ -98,12 +112,16 @@ function joinDateParts(intlParts, dateFormat) {
   return result;
 }
 
-function formatClockString(config, now) {
+// Fixed offsets are formatted as UTC (see buildIntlOptions), so the Date is
+// shifted by the offset first.
+function shiftForFixedOffset(config, now) {
   now = now || new Date();
   const offset = fixedOffsetMinutes(config.timeZone);
-  if (offset !== null) {
-    now = new Date(now.getTime() + offset * 60000);
-  }
+  return offset === null ? now : new Date(now.getTime() + offset * 60000);
+}
+
+function formatClockString(config, now) {
+  now = shiftForFixedOffset(config, now);
   const options = buildIntlOptions(config);
   const formatter = new Intl.DateTimeFormat(config.language, options);
 
@@ -115,6 +133,60 @@ function formatClockString(config, now) {
   }
 
   return formatter.format(now);
+}
+
+const DAY_PERIOD_SIZES = { small: 0.35, medium: 0.45, large: 0.55 };
+const DAY_PERIOD_POSITIONS = ["top", "middle"];
+
+// Returns complete AM/PM superscript settings, filling anything missing or
+// unrecognised (e.g. from a file made before this setting existed).
+function normalizeDayPeriodStyle(config) {
+  const given = config.dayPeriodStyle || {};
+  return {
+    superscript: given.superscript === true,
+    size: Object.prototype.hasOwnProperty.call(DAY_PERIOD_SIZES, given.size) ? given.size : "medium",
+    position: DAY_PERIOD_POSITIONS.indexOf(given.position) !== -1 ? given.position : "top"
+  };
+}
+
+// Splits a time into runs of plain text and the AM/PM piece, wherever the
+// language puts it (ko/ja put it first). The space between the time and AM/PM
+// is dropped so the superscript sits snugly against the digits.
+function formatClockSegments(config, now) {
+  now = shiftForFixedOffset(config, now);
+  const parts = new Intl.DateTimeFormat(config.language, buildIntlOptions(config)).formatToParts(now);
+  const segments = [];
+  parts.forEach(function (part, i) {
+    const isGap = part.type === "literal" && /^\s+$/.test(part.value);
+    const touchesDayPeriod = (parts[i - 1] && parts[i - 1].type === "dayPeriod") ||
+      (parts[i + 1] && parts[i + 1].type === "dayPeriod");
+    if (isGap && touchesDayPeriod) {
+      return;
+    }
+    const isDayPeriod = part.type === "dayPeriod";
+    const last = segments[segments.length - 1];
+    if (last && !last.dayPeriod && !isDayPeriod) {
+      last.text += part.value;
+    } else {
+      segments.push({ text: part.value, dayPeriod: isDayPeriod });
+    }
+  });
+  return segments;
+}
+
+// Typical height of digits as a fraction of the font size; used to line the
+// raised AM/PM up with the top (or middle) of the digits across most fonts.
+const DIGIT_HEIGHT_RATIO = 0.7;
+
+// Inline styles for the AM/PM span. vertical-align lengths resolve against
+// the span's own (smaller) font size, hence the division by the size.
+function dayPeriodCss(dayPeriodStyle) {
+  const size = DAY_PERIOD_SIZES[dayPeriodStyle.size] || DAY_PERIOD_SIZES.medium;
+  let raise = DIGIT_HEIGHT_RATIO * (1 - size) / size;
+  if (dayPeriodStyle.position === "middle") {
+    raise = raise / 2;
+  }
+  return { fontSize: size + "em", verticalAlign: (Math.round(raise * 1000) / 1000) + "em" };
 }
 
 function applyRotation(config, container) {
@@ -202,7 +274,37 @@ function applyFont(config, textEl, doc, fontUrl, onFontError, onFontLoaded) {
 }
 
 function render(config, textEl, now) {
+  if (config.mode === "time" && normalizeDayPeriodStyle(config).superscript) {
+    const segments = formatClockSegments(config, now);
+    if (segments.some(function (seg) { return seg.dayPeriod; })) {
+      renderSegments(config, textEl, segments);
+      return;
+    }
+  }
   textEl.textContent = formatClockString(config, now);
+}
+
+function renderSegments(config, textEl, segments) {
+  const doc = textEl.ownerDocument;
+  const css = dayPeriodCss(normalizeDayPeriodStyle(config));
+  textEl.textContent = "";
+  segments.forEach(function (seg, i) {
+    if (!seg.dayPeriod) {
+      textEl.appendChild(doc.createTextNode(seg.text));
+      return;
+    }
+    const span = doc.createElement("span");
+    span.textContent = seg.text;
+    span.style.fontSize = css.fontSize;
+    span.style.verticalAlign = css.verticalAlign;
+    // A small gap on the side facing the digits.
+    if (i === 0) {
+      span.style.marginRight = "0.3em";
+    } else {
+      span.style.marginLeft = "0.3em";
+    }
+    textEl.appendChild(span);
+  });
 }
 
 // Returns the font size (in the same unit as baseFontSize) that makes a box of
@@ -242,7 +344,33 @@ function fitTextToContainer(container, textEl, textScalePercent) {
     FIT_BASE_FONT_SIZE,
     FIT_FILL_RATIO
   );
-  textEl.style.fontSize = (fontSize * resolveTextScale(textScalePercent)) + "px";
+  const scaled = fontSize * resolveTextScale(textScalePercent);
+  textEl.style.fontSize = scaled + "px";
+  return scaled;
+}
+
+// A two-digit hour ("10") and an hour without a "1" ("08" - many fonts draw
+// "1" narrower than other digits), each in both halves of the day.
+const SIZING_SAMPLE_HOURS = [8, 10, 20, 22];
+
+// Sizes the clock once for the widest it will get, then shows the real time.
+// A time is measured at two sample times rather than "now": without a leading
+// zero the hour gains a digit at 10:00, and AM/PM can differ in width, so
+// sizing to the current time could overflow later in the day. Date mode fits
+// the current text, as before.
+function fitClockToContainer(container, textEl, config, now) {
+  if (config.mode !== "time") {
+    render(config, textEl, now);
+    fitTextToContainer(container, textEl, config.textScale);
+    return;
+  }
+  const sampleConfig = Object.assign({}, config, { timeZone: null });
+  const sizes = SIZING_SAMPLE_HOURS.map(function (hour) {
+    render(sampleConfig, textEl, new Date(2000, 0, 1, hour, 0, 0));
+    return fitTextToContainer(container, textEl, config.textScale);
+  });
+  textEl.style.fontSize = Math.min.apply(null, sizes) + "px";
+  render(config, textEl, now);
 }
 
 // An HTML widget's own Intl/Date report UTC on a BrightSign player, so the
@@ -381,23 +509,22 @@ function bootClock(config, overrides) {
   applySafeTextRegion(config, container);
   applyColors(config, document.body, textEl);
 
-  // Sized once (below), not on every tick: with tabular-nums digit widths are
-  // stable, so continuously re-fitting every second only produced visible
-  // jitter as the exact rendered string varied (e.g. AM/PM, weekday length)
-  // with no benefit. Re-fit once more if the custom font finishes loading
-  // after this point, since its real metrics may differ from the fallback
-  // used for the very first measurement.
-  function refit() {
-    fitTextToContainer(container, textEl, config.textScale);
-  }
-
-  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
-
   // Formatting uses its own copy so the player's zone, once read, can be
   // layered on without altering the caller's config.
   const displayConfig = Object.assign({}, config);
 
-  render(displayConfig, textEl);
+  // Sized once (below), not on every tick: continuously re-fitting every
+  // second only produced visible jitter as the rendered string varied.
+  // fitClockToContainer sizes a time for its widest moment (a two-digit hour,
+  // AM or PM) so it never overflows later. Re-fit once more if the custom font
+  // finishes loading after this point, since its real metrics may differ from
+  // the fallback used for the very first measurement.
+  function refit() {
+    fitClockToContainer(container, textEl, displayConfig);
+  }
+
+  applyFont(config, textEl, document, overrides.fontUrl, overrides.onFontError, refit);
+
   refit();
 
   const readZone = overrides.readTimeZone || function () {
@@ -406,7 +533,6 @@ function bootClock(config, overrides) {
   readZone().then(function (zone) {
     if (zone) {
       displayConfig.timeZone = zone;
-      render(displayConfig, textEl);
       refit();
     }
   });
@@ -419,10 +545,14 @@ function bootClock(config, overrides) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildIntlOptions,
+    usesTwelveHourClock,
     toIntlTimeZone,
     readPlayerTimeZone,
     normalizeDateFormat,
     formatClockString,
+    formatClockSegments,
+    normalizeDayPeriodStyle,
+    dayPeriodCss,
     applyRotation,
     applyBackgroundImage,
     applySafeTextRegion,
@@ -432,6 +562,7 @@ if (typeof module !== "undefined" && module.exports) {
     computeFitFontSize,
     resolveTextScale,
     fitTextToContainer,
+    fitClockToContainer,
     bootClock
   };
 }

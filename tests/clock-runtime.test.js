@@ -2,10 +2,14 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   buildIntlOptions,
+  usesTwelveHourClock,
   toIntlTimeZone,
   readPlayerTimeZone,
   normalizeDateFormat,
   formatClockString,
+  formatClockSegments,
+  normalizeDayPeriodStyle,
+  dayPeriodCss,
   applyRotation,
   applyBackgroundImage,
   applySafeTextRegion,
@@ -13,7 +17,8 @@ const {
   applyFont,
   render,
   computeFitFontSize,
-  resolveTextScale
+  resolveTextScale,
+  fitClockToContainer
 } = require("../clock-runtime.js");
 
 const FIXED_DATE = new Date(2026, 8, 12, 14, 6, 53); // Saturday, September 12, 2026, 14:06:53
@@ -494,4 +499,147 @@ test("readPlayerTimeZone: falls back to null without the module or on failure", 
   assert.equal(await readPlayerTimeZone(() => { throw new Error("no module"); }), null);
   const rejecting = () => class { getTimeZone() { return Promise.reject(new Error("boom")); } };
   assert.equal(await readPlayerTimeZone(rejecting), null);
+});
+
+test("usesTwelveHourClock: honours forced hour12 and the language default", () => {
+  assert.equal(usesTwelveHourClock({ language: "en-GB", hour12: true }), true);
+  assert.equal(usesTwelveHourClock({ language: "en-US", hour12: false }), false);
+  assert.equal(usesTwelveHourClock({ language: "en-US", hour12: null }), true);
+  assert.equal(usesTwelveHourClock({ language: "en-GB", hour12: null }), false);
+});
+
+test("formatClockString: hourLeadingZero false drops the zero on a 12-hour clock", () => {
+  const morning = new Date(2026, 8, 12, 9, 5, 0);
+  const result = formatClockString(
+    { mode: "time", language: "en", hour12: true, showSeconds: false, hourLeadingZero: false }, morning);
+  assert.match(result, /^9:05\s*AM$/);
+});
+
+test("formatClockString: hourLeadingZero false keeps the zero on a 24-hour clock", () => {
+  const morning = new Date(2026, 8, 12, 9, 5, 0);
+  assert.equal(formatClockString(
+    { mode: "time", language: "en-GB", hour12: null, showSeconds: false, hourLeadingZero: false }, morning), "09:05");
+  assert.equal(formatClockString(
+    { mode: "time", language: "en", hour12: false, showSeconds: false, hourLeadingZero: false }, morning), "09:05");
+});
+
+test("formatClockString: hourLeadingZero missing keeps today's 2-digit hour", () => {
+  const morning = new Date(2026, 8, 12, 9, 5, 0);
+  assert.match(formatClockString({ mode: "time", language: "en", hour12: true, showSeconds: false }, morning), /^09:05\s*AM$/);
+});
+
+function fakeTextEl() {
+  const el = { style: {}, childNodes: [] };
+  el.ownerDocument = {
+    createElement: (tag) => ({ tagName: tag.toUpperCase(), style: {}, textContent: "" }),
+    createTextNode: (text) => ({ textContent: text })
+  };
+  el.appendChild = (n) => el.childNodes.push(n);
+  Object.defineProperty(el, "textContent", {
+    get: () => el.childNodes.map((n) => n.textContent).join(""),
+    set: (v) => { el.childNodes = v ? [{ textContent: v }] : []; }
+  });
+  return el;
+}
+
+test("normalizeDayPeriodStyle: defaults for missing or partial settings", () => {
+  assert.deepEqual(normalizeDayPeriodStyle({}), { superscript: false, size: "medium", position: "top" });
+  assert.deepEqual(normalizeDayPeriodStyle({ dayPeriodStyle: { superscript: true, size: "huge" } }),
+    { superscript: true, size: "medium", position: "top" });
+});
+
+test("formatClockSegments: en splits off PM and drops the space before it", () => {
+  assert.deepEqual(
+    formatClockSegments({ mode: "time", language: "en", hour12: true, showSeconds: false, hourLeadingZero: false }, FIXED_DATE),
+    [{ text: "2:06", dayPeriod: false }, { text: "PM", dayPeriod: true }]);
+});
+
+test("formatClockSegments: ko puts AM/PM first and drops the space after it", () => {
+  assert.deepEqual(
+    formatClockSegments({ mode: "time", language: "ko", hour12: true, showSeconds: false, hourLeadingZero: false }, FIXED_DATE),
+    [{ text: "오후", dayPeriod: true }, { text: "2:06", dayPeriod: false }]);
+});
+
+test("formatClockSegments: applies a fixed UTC offset like formatClockString", () => {
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, timeZone: "+10:30" };
+  const joined = formatClockSegments(config, FIXED_DATE).map((s) => s.text).join(" ");
+  assert.equal(joined.replace(/\s+/g, " "), formatClockString(config, FIXED_DATE).replace(/\s+/g, " "));
+});
+
+test("dayPeriodCss: size presets and a higher raise for top than middle", () => {
+  assert.equal(dayPeriodCss({ size: "small", position: "top" }).fontSize, "0.35em");
+  assert.equal(dayPeriodCss({ size: "medium", position: "top" }).fontSize, "0.45em");
+  assert.equal(dayPeriodCss({ size: "large", position: "top" }).fontSize, "0.55em");
+  const top = parseFloat(dayPeriodCss({ size: "medium", position: "top" }).verticalAlign);
+  const middle = parseFloat(dayPeriodCss({ size: "medium", position: "middle" }).verticalAlign);
+  assert.ok(top > middle && middle > 0);
+});
+
+test("render: superscript wraps AM/PM in a styled span", () => {
+  const textEl = fakeTextEl();
+  render({ mode: "time", language: "en", hour12: true, showSeconds: false,
+    dayPeriodStyle: { superscript: true, size: "small", position: "top" } }, textEl, FIXED_DATE);
+  assert.equal(textEl.childNodes.length, 2);
+  assert.equal(textEl.childNodes[0].textContent, "02:06");
+  assert.equal(textEl.childNodes[1].tagName, "SPAN");
+  assert.equal(textEl.childNodes[1].textContent, "PM");
+  assert.equal(textEl.childNodes[1].style.fontSize, "0.35em");
+});
+
+test("render: superscript on a 24-hour clock is plain text", () => {
+  const textEl = fakeTextEl();
+  render({ mode: "time", language: "en", hour12: false, showSeconds: false,
+    dayPeriodStyle: { superscript: true } }, textEl, FIXED_DATE);
+  assert.equal(textEl.textContent, "14:06");
+  assert.equal(textEl.childNodes.length, 1);
+});
+
+// A 1000x300 container; the text measures 50px wide per character at a 100px
+// font size (plus `extraForPm` characters when it contains "PM").
+function fakeFitElements(extraForPm, narrowOne) {
+  const container = { getBoundingClientRect: () => ({ width: 1000, height: 300 }) };
+  const textEl = fakeTextEl();
+  textEl.getBoundingClientRect = () => {
+    const px = parseFloat(textEl.style.fontSize);
+    const text = textEl.textContent;
+    const ones = narrowOne ? (text.match(/1/g) || []).length / 2 : 0;
+    const chars = text.length - ones + (/PM/.test(text) ? (extraForPm || 0) : 0);
+    return { width: chars * px / 2, height: px };
+  };
+  return { container, textEl };
+}
+
+test("fitClockToContainer: sizes for a two-digit hour even when started at 9 o'clock", () => {
+  const { container, textEl } = fakeFitElements();
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, hourLeadingZero: false, textScale: 100 };
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 9, 5, 0));
+  const nine = parseFloat(textEl.style.fontSize);
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 10, 5, 0));
+  assert.equal(parseFloat(textEl.style.fontSize), nine);
+  assert.match(textEl.textContent, /^10:05/);
+});
+
+test("fitClockToContainer: uses the wider of the AM and PM samples", () => {
+  const { container, textEl } = fakeFitElements(4);
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, textScale: 100 };
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 9, 5, 0));
+  // "10:00 PM" is 8 characters, plus 4 for PM, so 12 * 50 = 600px wide at 100px.
+  assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, 600, 100, 100, 0.92));
+  assert.match(textEl.textContent, /AM$/);
+});
+
+test("fitClockToContainer: date mode fits the current text", () => {
+  const { container, textEl } = fakeFitElements();
+  const config = { mode: "date", language: "en", textScale: 100 };
+  fitClockToContainer(container, textEl, config, FIXED_DATE);
+  const width = textEl.textContent.length * 50;
+  assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, width, 100, 100, 0.92));
+});
+
+test("fitClockToContainer: a narrow '1' (proportional digits) doesn't undersize an 08:xx hour", () => {
+  const { container, textEl } = fakeFitElements(0, true);
+  const config = { mode: "time", language: "en", hour12: true, showSeconds: false, textScale: 100 };
+  fitClockToContainer(container, textEl, config, new Date(2026, 8, 12, 8, 47, 0));
+  // "08:00 AM" has no "1": 8 characters * 50 = 400px wide at 100px.
+  assert.equal(parseFloat(textEl.style.fontSize), computeFitFontSize(1000, 300, 400, 100, 100, 0.92));
 });

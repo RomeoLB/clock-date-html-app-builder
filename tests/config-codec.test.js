@@ -78,3 +78,14 @@ test("computeFitHeightRegion: leaves the region unchanged when the viewport or t
   assert.deepEqual(computeFitHeightRegion(10, 40, 100, 0, 1.3), { y: 10, height: 40 });
   assert.deepEqual(computeFitHeightRegion(10, 40, 0, 1000, 1.3), { y: 10, height: 40 });
 });
+
+test("DEFAULT_CONFIG keeps the leading zero and plain AM/PM", () => {
+  assert.equal(DEFAULT_CONFIG.hourLeadingZero, true);
+  assert.deepEqual(DEFAULT_CONFIG.dayPeriodStyle, { superscript: false, size: "medium", position: "top" });
+});
+
+test("round-trips the leading-zero and AM/PM superscript settings", () => {
+  const config = { ...DEFAULT_CONFIG, hour12: true, hourLeadingZero: false,
+    dayPeriodStyle: { superscript: true, size: "large", position: "middle" } };
+  assert.deepEqual(extractConfigFromHtml(buildClockHtml(config)), config);
+});
